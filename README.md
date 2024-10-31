@@ -27,7 +27,7 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 6. 1.3 inches 128x64 OLED Display, RGB LEDs and Buzzers makeup for total user interaction and experience.
 7. More Coming Soon.
 
-* ***various parameters needed to be set based on user needs and scenarious*** </br>
+(*) ***various parameters needed to be set based on user needs and scenarious*** </br>
 ** ***Sensors used in this project are hobby level, please don't expect industry standards. Sensors may fail, devices may fail. Be cautious and use it at your own risk*** </br>
 *** ***Deals with high voltage current, be ultra cautious***
 
