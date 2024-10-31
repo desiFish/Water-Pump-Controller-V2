@@ -1,0 +1,6 @@
+
+build/esp32.esp32.esp32doit-devkit-v1/Advanced-Water-Pump-Controller.ino.bin
+build/esp32.esp32.esp32doit-devkit-v1/Advanced-Water-Pump-Controller.ino.bootloader.bin
+*.elf
+*.bin
+*.map
