@@ -14,7 +14,7 @@
 10. Wires, connectors, etc (according to your need)
 
 ## Upcoming Features
-Check [Issues](https://pages.github.com/)
+Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/issues)
 
-## Pictures, Schematics and other stuff (COMING SOON, check *** issues ***)
+## Pictures, Schematics and other stuff (COMING SOON, check ***issues***)
 
