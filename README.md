@@ -1,4 +1,5 @@
 # Advanced Water Pump Controller
+<<<<<<< Updated upstream
 ###A pump controller with dry running protection, time-left to fill, diagnostics and other smart features.
 
 ## Hardware:
@@ -18,3 +19,7 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 
 ## Pictures, Schematics and other stuff (COMING SOON, check ***issues***)
 
+=======
+ A pump controller with dry running protection, time-left to fill, diagnostics and other smart features.
+## THIS CODE WAS NOT MADE WITH SIMPLICITY IN MIND, YOU ARE WELCOME TO MODIFY IT AS PER YOUR NEED... IF YOU CAN'T UNDERSTAND ANY PART, YOU MAY EMAIL ME (PROVIDED IN MY PROFILE) ELSE JUST BLINDLY COPY EVERYTHING. BUT REMEMBER TO CALIBRATE YOUR VOLTAGE SENSOR.
+>>>>>>> Stashed changes
