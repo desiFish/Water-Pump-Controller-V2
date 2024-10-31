@@ -20,14 +20,14 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 
 ## Some of the Features
 1. Dual core utilisation of ESP32, one core working with UI and another monitoring sensors.
-2. Full Induction Pump Protection System, tested on 240V 1HP Water Pump *
+2. Full Induction Pump Protection System, tested on 240V 1HP Water Pump (*)
 3. Range of parameters for customisation, uses Preferences Library for remembering your choices.
-4. Uses Float Sensor for basic water level sensing and turning off of PUMP with Advanced Waterproof Distance sensor to show real time water level *
+4. Uses Float Sensor for basic water level sensing and turning off of PUMP with Advanced Waterproof Distance sensor to show real time water level (*)
 5. Uses one button system, SINGLE PRESS (SHORT) for navigation and SINGLE PRESS (LONG) for selection, with flashing LEDs for guidance.
 6. 1.3 inches 128x64 OLED Display, RGB LEDs and Buzzers makeup for total user interaction and experience.
 7. More Coming Soon.
 
-* ***various parameters needed to be set based on user needs and scenarious***
-** ***Sensors used in this project are hobby level, please don't expect industry standards. Sensors may fail, devices may fail. Be cautious and use it at your own risk***
+* ***various parameters needed to be set based on user needs and scenarious*** </br>
+** ***Sensors used in this project are hobby level, please don't expect industry standards. Sensors may fail, devices may fail. Be cautious and use it at your own risk*** </br>
 *** ***Deals with high voltage current, be ultra cautious***
 
