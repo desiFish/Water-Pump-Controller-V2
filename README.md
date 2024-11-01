@@ -17,7 +17,7 @@
 Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/issues)
 
 ## Pictures, Schematics and other stuff (COMING SOON, check ***issues***)
-![Schematics]([https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/SCH_Schematic1.png])
+<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/SCH_Schematic1.png" alt="Schematics" width="500" height="600">
 
 ## Some of the Features
 1. Dual core utilisation of ESP32, one core working with UI and another monitoring sensors.
