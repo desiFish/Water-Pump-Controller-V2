@@ -39,6 +39,10 @@ To be implemented:
 //RGB LED (2812B)
 #include <FastLED.h>
 
+//For SCT013 Current Sensor
+#include "EmonLib.h"
+EnergyMonitor emon1;
+
 //Input Devices
 #define BUTTON 15
 #define VOLTAGE_SENSOR 34
@@ -49,10 +53,17 @@ To be implemented:
 #define BUZZER_PIN 5
 #define FLOAT_SENSOR 36
 #define PUMP_PIN 2
+#define CURRENT_SENSOR_PIN 39
 
 //Output Devices
 #define TURN_ON_RELAY digitalWrite(PUMP_PIN, HIGH)  //update this
 #define TURN_OFF_RELAY digitalWrite(PUMP_PIN, LOW)  //update this
+
+/*5 is 5 seconds, you can assign any time as you wish.
+ This is given because it takes a while for the current consumption to get stable.
+ And there are all sort of current and voltage spikes just after the pump is ON
+ Giving it few seconds should resolve it.*/
+#define WAIT_AFTER_PUMP_ON 5
 
 #define NUM_LEDS 1
 // Define the array of leds
@@ -234,21 +245,21 @@ const char* PARAM_INPUT_1 = "ssid";
 const char* PARAM_INPUT_2 = "pass";
 
 //variables tankLow for storing ultrasonic value for empty tank and tankFull for full level.
-int tankLow = 0, tankFull = 0, liveTankLevel = 0;
+int tankLow, tankFull, liveTankLevel;
 //variables ampLow for lowest safe level and ampMax for safe ampere max value.
-float ampLow = 0, ampMax = 0;
-float liveAmp = 0;
+float ampLow, ampMax;
+float liveAmp;
 //variables wattLow for lowest safe level and wattMax for safe watt max value, since voltage won't be monitored for safety checks.
-float wattLow = 0, wattMax = 0, liveWatt = 0;
+float wattLow, wattMax, liveWatt;
 //pump status
 bool isPumpRunning = false;
 //float sensor status
-bool floatSensor;
+bool floatSensor = false;
 //using sensors or not
 bool useUltrasonic, useSensors, useFloat;
 bool resetFlag = false, updateInProgress = false;
 //variables voltLow for lowest safe level and voltMax for safe voltage max value.
-float liveVoltage = 0, voltLow = 0, voltMax = 0;
+float liveVoltage, voltLow, voltMax;
 
 //display update frequency
 unsigned long previousMillis = 0;  // will store last time it was updated
@@ -553,6 +564,9 @@ void setup(void) {
   // Start Serial 2 with the defined RX and TX pins and a baud rate of 9600
   uSonicSerial.begin(uSonic_BAUD, SERIAL_8N1, UltraRX, UltraTx);
 
+  emon1.current(CURRENT_SENSOR_PIN, 27);  // Current: input pin, calibration.
+  analogReadResolution(ADC_BITS);         //Needed for 12bit resolution
+
   //create a task that will be executed in the Task1code() function, with priority 1 and executed on core 0
   xTaskCreatePinnedToCore(
     loop2,       /* Task function. */
@@ -567,7 +581,7 @@ void setup(void) {
   FastLED.show();
 }
 
-//loop2() runs on Core 0, it is meant for continuously running and monitoring various
+//loop2() runs on Core 0, it is meant for continuously running and updating various
 //vital sensor data
 void loop2(void* pvParameters) {
   for (;;) {
@@ -578,20 +592,24 @@ void loop2(void* pvParameters) {
       Serial.print("This task is running on core ");  //debugging purpose
       Serial.println(xPortGetCoreID());
     }
+
+    if (useFloat)
+      floatSensor = readFloat();  // reads float sensor value and updates it
+
     if (useSensors) {
       Sensor = analogRead(VOLTAGE_SENSOR);  // read the analog voltage in value:
       inputStats.input(Sensor);             // log to Stats function
       liveVoltage = readVoltage();
+      liveAmp = readAmpere();
     }
     delay(100);
-    if (useFloat)
-      floatSensor = readFloat();  // reads float sensor value and updates it
+
     if (useUltrasonic)
       liveTankLevel = readUltrasonic();
   }
 }
 
-//loop() runs in Core 1
+//loop() runs on Core 1, loop performs User Interaction and monitoring of values
 void loop(void) {
   unsigned long currentMillis4 = millis();
   if (currentMillis4 - previousMillis4 >= interval4) {
@@ -835,6 +853,10 @@ void pumpRunSequence(void) {
             {
               //TURN_ON_RELAY;
               isPumpRunning = true;
+              TURN_ON_RELAY;
+              leds[0] = CRGB::Cyan;
+              FastLED.show();
+              pumpOnDelay();
               break;
             } else {
               leds[0] = CRGB::Red;
@@ -907,7 +929,6 @@ byte intelligentMonitoring() {
   }
 
   if (useSensors) {
-    liveAmp = readAmpere();
     liveWatt = liveVoltage * liveAmp;
 
     if (liveAmp > ampMax) {
@@ -937,7 +958,6 @@ byte intelligentMonitoring() {
       isPumpRunning = false;
       delay(500);
     }
-    liveAmp = readAmpere();
 
     if (liveAmp > 1)  //verifies if something is drawing current or not
       isPumpRunning = true;
@@ -946,6 +966,24 @@ byte intelligentMonitoring() {
   }
 
   return err;
+}
+
+void pumpOnDelay() {
+  byte i = WAIT_AFTER_PUMP_ON;
+  while (i > 0) {
+    display.clearDisplay();
+    display.setTextColor(SH110X_WHITE);
+    display.setTextSize(1);
+    display.setFont(NULL);
+    display.setCursor(32, 10);
+    display.println("PLEASE WAIT");
+    display.setCursor(62, 35);
+    display.print(i);
+    display.display();
+    delay(1000);
+    i--;
+  }
+  return;
 }
 
 //reads live values from voltage sensor
@@ -961,18 +999,20 @@ float readVoltage() {
     Serial.print("\tVoltage: ");
     Serial.println(current_Volts);  //Calculation and Value display is done the rest is if you're using an OLED display
   }
+  if (current_Volts < 0)
+    current_Volts = 0;
   return current_Volts;
 }
 
 //reads live values from ampere sensor
-float readAmpere() {
-  float amp = 0;
-  return amp;
+double readAmpere() {
+  double Irms = emon1.calcIrms(1480);  // Calculate Irms only
+  return Irms;
 }
 
 //reads live values from Ultrasonic sensor
 int readUltrasonic() {
-  int x;
+  static int x;
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis1 >= interval1) {
     previousMillis1 = currentMillis;
@@ -990,9 +1030,9 @@ int readUltrasonic() {
 
 //reads live values from Float sensor
 bool readFloat() {
-  if (analogRead(FLOAT_SENSOR) > 3000)  //FULL
+  if (analogRead(FLOAT_SENSOR) > 900)  //FULL/UP
     floatSensor = true;
-  else  //NOT FULL
+  else  //NOT FULL/DOWN
     floatSensor = false;
 
   return floatSensor;
@@ -1025,7 +1065,6 @@ void drawTankLevel(byte x = 0) {
 //Live value printer function
 void vitals() {
   if (useSensors) {
-    liveAmp = readAmpere();
     liveWatt = liveAmp * liveVoltage;
 
     display.setCursor(50, 12);
@@ -1256,10 +1295,52 @@ void diagnostics() {
       } else {
         if (option == 3)
           return;
+        else if (option == 2)
+          readRawFloat();
       }
     }
     count = 0;
     display.display();
+  }
+}
+
+void readRawFloat() {
+  while (1) {
+    display.clearDisplay();
+    display.setTextColor(SH110X_WHITE);
+    display.setTextSize(1);
+    display.setFont(NULL);
+    display.setCursor(0, 0);
+    display.println("Float: " + String(analogRead(FLOAT_SENSOR)));
+
+    display.setCursor(32, 56);
+    display.setTextColor(SH110X_BLACK, SH110X_WHITE);
+    display.fillRect(28, 55, 29, 10, 1);
+    display.print("BACK");
+    display.setTextColor(SH110X_WHITE);
+    display.setCursor(75, 56);
+    //display.setTextColor(SH110X_BLACK, SH110X_WHITE);
+    //display.fillRect(71, 55, 29, 10, 1);
+    display.print("NEXT");
+    display.drawCircle(70, 50, 2, 1);
+    display.fillCircle(59, 50, 2, 1);
+    display.setTextColor(SH110X_WHITE);
+    display.display();
+
+    byte count = 0;
+
+    if (digitalRead(BUTTON) == 1) {
+      while (digitalRead(BUTTON) == 1) {
+        count++;
+        if (count >= 1) {
+          blinkOrange(1, 20);
+        }
+        delay(50);
+      }
+
+      if (count >= 1)
+        return;
+    }
   }
 }
 
@@ -3813,19 +3894,17 @@ void sysWatcher() {
     display.display();
 
     byte count = 0;
-    while (1) {
-      if (digitalRead(BUTTON) == 1) {
-        while (digitalRead(BUTTON) == 1) {
-          count++;
-          if (count >= 1) {
-            blinkOrange(1, 20);
-          }
-          delay(50);
+    if (digitalRead(BUTTON) == 1) {
+      while (digitalRead(BUTTON) == 1) {
+        count++;
+        if (count >= 1) {
+          blinkOrange(1, 20);
         }
-
-        if (count >= 1)
-          return;
+        delay(50);
       }
+
+      if (count >= 1)
+        return;
     }
   }
 }
