@@ -31,7 +31,7 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 9. WiFi Manager for seamlessly setting up the device with your smartphone with on-screen guidance. RTC Clock updates automatically with Wifi (Go to the settings).
 10. More Coming Soon.
 
-(*) ***various parameters needed to be set based on user needs and scenarious*** </br>
+(*) ***Various parameters needed to be set based on user needs and scenarious. Calibration of sensors, various limits are needed to be set through the program menu. Let me know if you need help.*** </br>
 ** ***Sensors used in this project are hobby level, please don't expect industry standards. Sensors may fail, devices may fail. Be cautious and use it at your own risk*** </br>
 *** ***Deals with high voltage current, be ultra cautious***
 
