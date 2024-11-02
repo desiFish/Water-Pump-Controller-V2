@@ -1,5 +1,5 @@
 # Advanced Water Pump Controller
-###A pump controller with dry running protection, time-left to fill, diagnostics and other smart features.
+### A pump controller with dry running protection, time-left to fill, diagnostics and other smart features.
 
 ## Hardware:
 1. DOIT ESP32 DEVKIT V1 (30 pin)
