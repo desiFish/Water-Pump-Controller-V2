@@ -1,5 +1,5 @@
 /*
-Copyright Aniket Patra. Give proper attributes.
+Copyright Aniket Patra. Give proper attributes. Others (one or more) parties may have their own copyrights.
 
 Hardware:
 1. DOIT ESP32 DEVKIT V1
@@ -8,9 +8,6 @@ Hardware:
 4. DS1307 RTC
 5. SCT Current sensor
 6. AJ-SR04 Ultrasonic Sensor(Water Proof)
-
-To be implemented:
-1. Approx time to fill based on rate of change of Ultra Sonic reading
 */
 
 #include <WiFi.h>
