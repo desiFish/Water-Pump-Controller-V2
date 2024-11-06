@@ -36,11 +36,11 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 ** ***Sensors used in this project are hobby level, please don't expect industry standards. Sensors may fail, devices may fail. Be cautious and use it at your own risk*** </br>
 *** ***Deals with high voltage current, be ultra cautious***
 
-## Known Issues
+## Known Issues 1.0.2-alpha
 1. Voltage Monitoring is not working (Giving higher values than individual test results, will look into it later).
 2. Wattage is dependent on voltage, so it is also not working.
 
-## Temporary Fixes
+## Temporary Fixes 1.0.2-alpha
 The program works great just using Current Sensor, Float Sensor and Distance Sensor (Assuming you have some kind of Voltage protection system in your house). Even without Voltage monitoring, you can kinda predict it using Current i.e. When Voltage Rises Current drops, When Voltage drops Current rises.
 REMEMBER TO CALIBRATE THE CURRENT SENSOR!! The easiest way is to verify it with Electric Meter/Energy Meter installed by your electricity company and adjust the calibration value, for me it is 27.
 In my case, I get 220-240 volts (from energy meter), and ampere is around 2.6 A to 2.9 A for 1 HP Induction Motor. And I have a digital Electricity protection system in my house. 
