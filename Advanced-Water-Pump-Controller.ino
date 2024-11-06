@@ -4,18 +4,20 @@ Copyright Aniket Patra. Give proper attributes. Others (one or more) parties may
 Hardware:
 1. DOIT ESP32 DEVKIT V1
 2. 128x64 OLED Display
-NOT USING CURRENTLY--> 3. ZMPT101B Voltage Sensor
-4. DS1307 RTC
-5. SCT Current sensor
-6. AJ-SR04 Ultrasonic Sensor(Water Proof)
+3. DS1307 RTC
+4. SCT Current sensor
+5. AJ-SR04 Ultrasonic Sensor(Water Proof)
+
+NOT USING CURRENTLY--> ZMPT101B Voltage Sensor
 */
 
+//For basic ESP32 stuff like wifi, OTA Update and Wifi Manager Server
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <ElegantOTA.h>
 
-//For Display
+//For Display and I2C
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -42,15 +44,15 @@ EnergyMonitor emon1;
 
 //Input Devices
 #define BUTTON 15
-#define VOLTAGE_SENSOR 34
+//#define VOLTAGE_SENSOR 34
 #define UltraRX 16  //to TX of sensor
 #define UltraTx 17  //to RX of sensor
 //SDA 21, SCL 22 used for I2C Devices
-#define LED_PIN 4
+#define LED_PIN 4  //for WS2812B RGB LED
 #define BUZZER_PIN 5
 #define FLOAT_SENSOR 36
-#define PUMP_PIN 2
-#define CURRENT_SENSOR_PIN 39
+#define PUMP_PIN 2             //PUMP RELAY PIN
+#define CURRENT_SENSOR_PIN 39  //SCT SENSOR PIN
 
 //Output Devices
 #define TURN_ON_RELAY digitalWrite(PUMP_PIN, HIGH)  //update this
@@ -255,7 +257,7 @@ bool floatSensor = false;
 //using sensors or not
 bool useUltrasonic, useSensors, useFloat;
 bool resetFlag = false, updateInProgress = false;
-//global error tracking variable, Core 0 updates it 
+//global error tracking variable, Core 0 updates it
 byte raiseError = false;
 //variables voltLow for lowest safe level and voltMax for safe voltage max value.
 //float liveVoltage, voltLow, voltMax;
@@ -295,11 +297,11 @@ long interval4 = 1000;
 //Elegant OTA related task
 void onOTAStart() {
   // Log when OTA has started
+  updateInProgress = true;
   FastLED.setBrightness(200);
   leds[0] = CRGB::Red;
   FastLED.show();
   Serial.println("OTA update started!");
-  updateInProgress = true;
   display.clearDisplay();
   display.setTextColor(SH110X_WHITE);
   display.setTextSize(1);
@@ -612,8 +614,9 @@ void setup(void) {
   FastLED.show();
 }
 
-//loop2() runs on Core 0, it is meant for continuously running and updating various
-//vital sensor data
+/*loop2() runs on Core 0, it is meant for continuously running and updating various
+vital sensor data and taking actions based on that. Even if user is operating Menu, it will turn off the pump in background
+*/
 void loop2(void* pvParameters) {
   for (;;) {
     unsigned long currentMillis = millis();
@@ -647,7 +650,7 @@ void loop2(void* pvParameters) {
   }
 }
 
-//loop() runs on Core 1, loop performs User Interaction and monitoring of values
+//loop() runs on Core 1, loop performs User Interaction and User Interface
 void loop(void) {
   unsigned long currentMillis4 = millis();
   if (currentMillis4 - previousMillis4 >= interval4) {
@@ -656,6 +659,8 @@ void loop(void) {
     Serial.print("This task is running on core ");  //debugging purpose
     Serial.println(xPortGetCoreID());
   }
+
+  //implement no OTA during pumpIsRunning
   ElegantOTA.loop();
 
   if (!updateInProgress) {
@@ -1105,10 +1110,10 @@ void vitals() {
 
   if (useFloat) {
     display.setCursor(50, 42);
-    if (floatSensor)  //CHECK THIS FOR CORRECTION
-      display.print("Float: Up");
+    if (floatSensor)
+      display.print("Float: Full");
     else
-      display.print("Float: Down");
+      display.print("Float: Not Full");
   }
 
   if (useUltrasonic) {
@@ -1133,63 +1138,50 @@ void menu(void) {
     switch (option) {
       case 1:
         display.setCursor(3, 13);
-        display.print("1. Diagnostics");
+        display.print("1. Sys Watcher");
         display.drawRect(0, 10, 127, 13, 1);
         display.setCursor(3, 27);
         display.print("2. Data Limits");
         display.setCursor(3, 41);
         display.print("3. Configurations");
         display.setCursor(3, 55);
-        display.print("4. Sys Watcher");
+        display.print("4. Reset");
         break;
       case 2:
         display.setCursor(3, 13);
-        display.print("1. Diagnostics");
+        display.print("1. Sys Watcher");
         display.setCursor(3, 27);
         display.print("2. Data Limits");
         display.drawRect(0, 24, 127, 13, 1);
         display.setCursor(3, 41);
         display.print("3. Configurations");
         display.setCursor(3, 55);
-        display.print("4. Sys Watcher");
+        display.print("4. Reset");
         break;
       case 3:
         display.setCursor(3, 13);
-        display.print("1. Diagnostics");
+        display.print("1. Sys Watcher");
         display.setCursor(3, 27);
         display.print("2. Data Limits");
         display.setCursor(3, 41);
         display.print("3. Configurations");
         display.drawRect(0, 38, 127, 13, 1);
         display.setCursor(3, 55);
-        display.print("4. Sys Watcher");
+        display.print("4. Reset");
         break;
       case 4:
         display.setCursor(3, 13);
-        display.print("4. Sys Watcher");
+        display.print("4. Reset");
         display.drawRect(0, 10, 127, 13, 1);
         display.setCursor(3, 27);
-        display.print("5. Reset");
-        display.setCursor(3, 41);
-        display.print("6. Exit");
+        display.print("5. Exit");
         break;
       case 5:
         display.setCursor(3, 13);
-        display.print("4. Sys Watcher");
+        display.print("4. Reset");
         display.setCursor(3, 27);
-        display.print("5. Reset");
+        display.print("5. Exit");
         display.drawRect(0, 24, 127, 13, 1);
-        display.setCursor(3, 41);
-        display.print("6. Exit");
-        break;
-      case 6:
-        display.setCursor(3, 13);
-        display.print("4. Sys Watcher");
-        display.setCursor(3, 27);
-        display.print("5. Reset");
-        display.setCursor(3, 41);
-        display.print("6. Exit");
-        display.drawRect(0, 38, 127, 13, 1);
         break;
         /*display.setCursor(3, 55);
   display.print("4. Exit");
@@ -1205,7 +1197,7 @@ void menu(void) {
           blinkOrange(0, 150, 0);
           delay(100);
         }
-        delay(50);
+        delay(60);
       }
 
       FastLED.setBrightness(20);
@@ -1214,20 +1206,18 @@ void menu(void) {
 
       if (count >= 1 && count <= 2) {
         option++;
-        if (option > 6)
+        if (option > 5)
           option = 1;
       } else {
         if (option == 1)
-          diagnostics();
+          sysWatcher();
         else if (option == 2)
           dataLimit();
         else if (option == 3)
           configurations();
         else if (option == 4)
-          sysWatcher();
-        else if (option == 5)
           totalReset();
-        else if (option == 6)
+        else if (option == 5)
           return;
       }
     }
@@ -1257,49 +1247,61 @@ void blinkOrange(byte times, byte brightValue, int blinkDuration) {
   }
 }
 
-/*NOT IMPLEMENTED YET function to test ultrasonic sensor and float sensor (manually; it just shows you changing values
- and you decide if values are okay)
-*/
-void diagnostics() {
+//container function for safe data limit entry
+void dataLimit() {
   byte count = 0, option = 1;
   while (true) {
     display.clearDisplay();
     display.setTextSize(1);
     display.setFont(NULL);
     display.setCursor(0, 0);
-    display.println("Diagnostics");
+    display.println("Set Limits");
     display.drawLine(0, 8, 127, 8, 1);
     switch (option) {
       case 1:
         display.setCursor(3, 13);
-        display.print("1. Test Ultrasonic");
+        display.print("1. Ultrasonic Sensor");
         display.drawRect(0, 10, 127, 13, 1);
         display.setCursor(3, 27);
-        display.print("2. Test Float");
+        display.print("2. Current Sensor");
         display.setCursor(3, 41);
         display.print("3. Exit");
         break;
       case 2:
         display.setCursor(3, 13);
-        display.print("1. Test Ultrasonic");
+        display.print("1. Ultrasonic Sensor");
         display.setCursor(3, 27);
-        display.print("2. Test Float");
+        display.print("2. Current Sensor");
         display.drawRect(0, 24, 127, 13, 1);
         display.setCursor(3, 41);
         display.print("3. Exit");
         break;
       case 3:
         display.setCursor(3, 13);
-        display.print("1. Test Ultrasonic");
+        display.print("1. Ultrasonic Sensor");
         display.setCursor(3, 27);
-        display.print("2. Test Float");
+        display.print("2. Current Sensor");
         display.setCursor(3, 41);
         display.print("3. Exit");
         display.drawRect(0, 38, 127, 13, 1);
         break;
+        /*case 4:
+        display.setCursor(3, 13);
+        display.print("4. Wattage Value");
+        display.drawRect(0, 10, 127, 13, 1);
+        display.setCursor(3, 27);
+        display.print("5. Exit");
+        break;
+      case 5:
+        display.setCursor(3, 13);
+        display.print("4. Wattage Value");
+        display.setCursor(3, 27);
+        display.print("5. Exit");
+        display.drawRect(0, 24, 127, 13, 1);
         /*display.setCursor(3, 55);
-  display.print("4. Exit");
-  display.drawRect(0, 52, 127, 13, 1);*/
+        display.print("4. Exit");
+        display.drawRect(0, 52, 127, 13, 1);
+        break;*/
     }
     if (digitalRead(BUTTON) == 1) {
       while (digitalRead(BUTTON) == 1) {
@@ -1321,148 +1323,11 @@ void diagnostics() {
         if (option > 3)
           option = 1;
       } else {
-        if (option == 3)
-          return;
-        else if (option == 2)
-          readRawFloat();
-      }
-    }
-    count = 0;
-    display.display();
-  }
-}
-
-void readRawFloat() {
-  while (1) {
-    display.clearDisplay();
-    display.setTextColor(SH110X_WHITE);
-    display.setTextSize(1);
-    display.setFont(NULL);
-    display.setCursor(0, 0);
-    display.println("Float: " + String(analogRead(FLOAT_SENSOR)));
-
-    display.setCursor(32, 56);
-    display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-    display.fillRect(28, 55, 29, 10, 1);
-    display.print("BACK");
-    display.setTextColor(SH110X_WHITE);
-    display.setCursor(75, 56);
-    //display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-    //display.fillRect(71, 55, 29, 10, 1);
-    display.print("NEXT");
-    display.drawCircle(70, 50, 2, 1);
-    display.fillCircle(59, 50, 2, 1);
-    display.setTextColor(SH110X_WHITE);
-    display.display();
-
-    byte count = 0;
-
-    if (digitalRead(BUTTON) == 1) {
-      while (digitalRead(BUTTON) == 1) {
-        count++;
-        if (count >= 1) {
-          blinkOrange(1, 20);
-        }
-        delay(50);
-      }
-
-      if (count >= 1)
-        return;
-    }
-  }
-}
-
-//container function for safe data limit entry
-void dataLimit() {
-  byte count = 0, option = 1;
-  while (true) {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setFont(NULL);
-    display.setCursor(0, 0);
-    display.println("Calibration");
-    display.drawLine(0, 8, 127, 8, 1);
-    switch (option) {
-      case 1:
-        display.setCursor(3, 13);
-        display.print("1. Ultrasonic Sensor");
-        display.drawRect(0, 10, 127, 13, 1);
-        display.setCursor(3, 27);
-        display.print("2. Current Sensor");
-        display.setCursor(3, 41);
-        display.print("3. Voltage Sensor");
-        display.setCursor(3, 55);
-        display.print("4. Wattage Value");
-        break;
-      case 2:
-        display.setCursor(3, 13);
-        display.print("1. Ultrasonic Sensor");
-        display.setCursor(3, 27);
-        display.print("2. Current Sensor");
-        display.drawRect(0, 24, 127, 13, 1);
-        display.setCursor(3, 41);
-        display.print("3. Voltage Sensor");
-        display.setCursor(3, 55);
-        display.print("4. Wattage Value");
-        break;
-      case 3:
-        display.setCursor(3, 13);
-        display.print("1. Ultrasonic Sensor");
-        display.setCursor(3, 27);
-        display.print("2. Current Sensor");
-        display.setCursor(3, 41);
-        display.print("3. Voltage Sensor");
-        display.drawRect(0, 38, 127, 13, 1);
-        display.setCursor(3, 55);
-        display.print("4. Wattage Value");
-        break;
-      case 4:
-        display.setCursor(3, 13);
-        display.print("4. Wattage Value");
-        display.drawRect(0, 10, 127, 13, 1);
-        display.setCursor(3, 27);
-        display.print("5. Exit");
-        break;
-      case 5:
-        display.setCursor(3, 13);
-        display.print("4. Wattage Value");
-        display.setCursor(3, 27);
-        display.print("5. Exit");
-        display.drawRect(0, 24, 127, 13, 1);
-        /*display.setCursor(3, 55);
-        display.print("4. Exit");
-        display.drawRect(0, 52, 127, 13, 1);*/
-        break;
-    }
-    if (digitalRead(BUTTON) == 1) {
-      while (digitalRead(BUTTON) == 1) {
-        count++;
-        if (count >= 1 && count <= 2) {
-          blinkOrange(1, 20, 50);
-        } else {
-          blinkOrange(0, 150, 0);
-          delay(100);
-        }
-        delay(50);
-      }
-
-      FastLED.setBrightness(20);
-      leds[0] = CRGB::Black;
-      FastLED.show();
-      if (count >= 1 && count <= 2) {
-        option++;
-        if (option > 5)
-          option = 1;
-      } else {
         if (option == 1)
           ultraSonicValues();
         else if (option == 2)
           ampereValues();
         else if (option == 3)
-          ;  //voltageValues();
-        else if (option == 4)
-          ;  //wattValues();
-        else if (option == 5)
           return;
       }
     }
@@ -3219,9 +3084,9 @@ void configurations() {
         display.print("1. Ultrasonic");
         display.drawRect(0, 10, 127, 13, 1);
         display.setCursor(3, 27);
-        display.print("2. Time");
+        display.print("2. Time Update");
         display.setCursor(3, 41);
-        display.print("3. Bypass Sensors");
+        display.print("3. Other Sensors");
         display.setCursor(3, 55);
         display.print("4. Exit");
         break;
@@ -3229,10 +3094,10 @@ void configurations() {
         display.setCursor(3, 13);
         display.print("1. Ultrasonic");
         display.setCursor(3, 27);
-        display.print("2. Time");
+        display.print("2. Time Update");
         display.drawRect(0, 24, 127, 13, 1);
         display.setCursor(3, 41);
-        display.print("3. Bypass Sensors");
+        display.print("3. Other Sensors");
         display.setCursor(3, 55);
         display.print("4. Exit");
         break;
@@ -3240,9 +3105,9 @@ void configurations() {
         display.setCursor(3, 13);
         display.print("1. Ultrasonic");
         display.setCursor(3, 27);
-        display.print("2. Time");
+        display.print("2. Time Update");
         display.setCursor(3, 41);
-        display.print("3. Bypass Sensors");
+        display.print("3. Other Sensors");
         display.drawRect(0, 38, 127, 13, 1);
         display.setCursor(3, 55);
         display.print("4. Exit");
@@ -3251,9 +3116,9 @@ void configurations() {
         display.setCursor(3, 13);
         display.print("1. Ultrasonic");
         display.setCursor(3, 27);
-        display.print("2. Time");
+        display.print("2. Time Update");
         display.setCursor(3, 41);
-        display.print("3. Bypass Sensors");
+        display.print("3. Other Sensors");
         display.setCursor(3, 55);
         display.print("4. Exit");
         display.drawRect(0, 52, 127, 13, 1);
@@ -3290,7 +3155,7 @@ void configurations() {
         else if (option == 2)
           configTime();
         else if (option == 3)
-          configSensors();  //Bypass Sensors (Current & Volt, Float)
+          configSensors();  //Bypass Sensors (Current and Float)
       }
     }
     count = 0;
@@ -3378,27 +3243,27 @@ void configSensors() {
     switch (option) {
       case 1:
         display.setCursor(3, 13);
-        display.print("1. Other Sensors");
+        display.print("1. Current Sensor");
         display.drawRect(0, 10, 127, 13, 1);
         display.setCursor(3, 27);
-        display.print("2. Float");
+        display.print("2. Float Sensor");
         display.setCursor(3, 41);
         display.print("3. Exit");
         break;
       case 2:
         display.setCursor(3, 13);
-        display.print("1. Other Sensors");
+        display.print("1. Current Sensor");
         display.setCursor(3, 27);
-        display.print("2. Float");
+        display.print("2. Float Sensor");
         display.drawRect(0, 24, 127, 13, 1);
         display.setCursor(3, 41);
         display.print("3. Exit");
         break;
       case 3:
         display.setCursor(3, 13);
-        display.print("1. Other Sensors");
+        display.print("1. Current Sensor");
         display.setCursor(3, 27);
-        display.print("2. Float");
+        display.print("2. Float Sensor");
         display.setCursor(3, 41);
         display.print("3. Exit");
         display.drawRect(0, 38, 127, 13, 1);
@@ -3646,6 +3511,7 @@ void configTime() {
   display.clearDisplay();
 }
 
+//Check this for disconnection error
 void autoTimeUpdate() {
   if (WiFi.status() == WL_CONNECTED) {
     timeClient.begin();
@@ -3879,62 +3745,100 @@ void errorMsg(byte code) {
 }
 
 /*
-Prints various system specifications
+Prints various system related data
+!! Add Current Sensor and Ultrasonic Sensor
 */
 void sysWatcher() {
+  byte data = 0, option = 0, count = 0;
   while (1) {
-    display.clearDisplay();
-    display.setTextColor(SH110X_WHITE);
-    display.setTextSize(1);
-    display.setFont(NULL);
-    display.setCursor(0, 0);
-    display.println("CPU Speed: " + String(getCpuFrequencyMhz()) + "Mhz");
-    display.setCursor(0, 10);
-    display.print("XTAL Freq: " + String(getXtalFrequencyMhz()) + "Mhz");
-    display.setCursor(0, 20);
-    display.print("APB Bus: " + String(getApbFrequency()) + "hz");
-    display.setCursor(0, 30);
-    int8_t temp = WiFi.RSSI();
-    display.print("WIFI RSSI: " + String(temp));
-    if (temp >= -50)
-      display.print(" (WOW)");
-    else if (temp > -60 && temp < -50)
-      display.print(" (GOOD)");
-    else if (temp > -70 && temp <= -60)
-      display.print(" (FAIR)");
-    else if (temp <= -70)
-      display.print(" (WEAK)");
-    display.setCursor(0, 40);
-    display.print("IP: ");
-    display.print(WiFi.localIP());
+    if (data == 0) {
+      display.clearDisplay();
+      display.setTextColor(SH110X_WHITE);
+      display.setTextSize(1);
+      display.setFont(NULL);
+      display.setCursor(0, 0);
+      display.println("CPU Speed: " + String(getCpuFrequencyMhz()) + "Mhz");
+      display.setCursor(0, 10);
+      display.print("XTAL Freq: " + String(getXtalFrequencyMhz()) + "Mhz");
+      display.setCursor(0, 20);
+      display.print("APB Bus: " + String(getApbFrequency()) + "hz");
+      display.setCursor(0, 30);
+      int8_t temp = WiFi.RSSI();
+      display.print("WIFI RSSI: " + String(temp));
+      if (temp >= -50)
+        display.print(" (WOW)");
+      else if (temp > -60 && temp < -50)
+        display.print(" (GOOD)");
+      else if (temp > -70 && temp <= -60)
+        display.print(" (FAIR)");
+      else if (temp <= -70)
+        display.print(" (WEAK)");
+      display.setCursor(0, 40);
+      display.print("IP: ");
+      display.print(WiFi.localIP());
+    } else if (data == 1) {
+      display.clearDisplay();
+      display.setCursor(0, 0);
+      display.println("Float: " + String(analogRead(FLOAT_SENSOR)));
+    }
 
-    display.setCursor(32, 56);
-    display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-    display.fillRect(28, 55, 29, 10, 1);
-    display.print("BACK");
-    display.setTextColor(SH110X_WHITE);
-    display.setCursor(75, 56);
-    //display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-    //display.fillRect(71, 55, 29, 10, 1);
-    display.print("NEXT");
-    display.drawCircle(70, 50, 2, 1);
-    display.fillCircle(59, 50, 2, 1);
-    display.setTextColor(SH110X_WHITE);
-    display.display();
+    if (option == 0) {
+      display.setCursor(32, 56);
+      display.setTextColor(SH110X_BLACK, SH110X_WHITE);
+      display.fillRect(28, 55, 29, 10, 1);
+      display.print("BACK");
+      display.setTextColor(SH110X_WHITE);
+      display.setCursor(75, 56);
+      display.print("NEXT");
+      display.drawCircle(70, 50, 2, 1);
+      display.fillCircle(59, 50, 2, 1);
+      display.setTextColor(SH110X_WHITE);
+      display.display();
+    } else if (option == 1) {
+      display.setCursor(32, 56);
+      display.setTextColor(SH110X_WHITE);
+      display.fillRect(28, 55, 29, 10, 1);
+      display.print("BACK");
+      display.setCursor(75, 56);
+      display.setTextColor(SH110X_BLACK, SH110X_WHITE);
+      display.fillRect(71, 55, 29, 10, 1);
+      display.print("NEXT");
+      display.fillCircle(70, 50, 2, 1);
+      display.drawCircle(59, 50, 2, 1);
+      display.setTextColor(SH110X_WHITE);
+      display.display();
+    }
 
-    byte count = 0;
     if (digitalRead(BUTTON) == 1) {
       while (digitalRead(BUTTON) == 1) {
         count++;
-        if (count >= 1) {
-          blinkOrange(1, 20);
+        if (count >= 1 && count <= 2) {
+          blinkOrange(1, 20, 50);
+        } else {
+          blinkOrange(0, 150, 0);
+          delay(100);
         }
         delay(50);
       }
 
-      if (count >= 1)
-        return;
+      FastLED.setBrightness(20);
+      leds[0] = CRGB::Black;
+      FastLED.show();
+      if (count >= 1 && count <= 2) {
+        option++;
+        if (option > 1)
+          option = 0;
+      } else {
+        if (option == 0)
+          return;
+        else if (option == 1) {
+          data++;
+          if (data > 1)
+            data = 0;
+        }
+      }
     }
+    count = 0;
   }
 }
 
