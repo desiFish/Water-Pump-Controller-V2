@@ -1,10 +1,10 @@
 /*
-Copyright Aniket Patra. Give proper attributes. Others (one or more) parties may have their own copyrights.
+Copyright Aniket Patra. Give proper attributes. Others (one or more) parties may have their own copyrights of their work.
 
 Hardware:
 1. DOIT ESP32 DEVKIT V1
 2. 128x64 OLED Display
-3. ZMPT101B Voltage Sensor
+NOT USING CURRENTLY--> 3. ZMPT101B Voltage Sensor
 4. DS1307 RTC
 5. SCT Current sensor
 6. AJ-SR04 Ultrasonic Sensor(Water Proof)
@@ -26,7 +26,7 @@ Hardware:
 #include <Preferences.h>
 
 //For ZMPT101B Voltage Sensor
-#include <Filters.h>
+//#include <Filters.h>
 
 // Date and time functions using a DS1307 RTC connected via I2C and Wire lib
 #include "RTClib.h"
@@ -56,7 +56,7 @@ EnergyMonitor emon1;
 #define TURN_ON_RELAY digitalWrite(PUMP_PIN, HIGH)  //update this
 #define TURN_OFF_RELAY digitalWrite(PUMP_PIN, LOW)  //update this
 
-/*5 is 5 seconds, you can assign any time as you wish.
+/*5 is 5 seconds, you can assign any time value you wish.
  This is given because it takes a while for the current consumption to get stable.
  And there are all sort of current and voltage spikes just after the pump is ON
  Giving it few seconds should resolve it.*/
@@ -247,7 +247,7 @@ int tankLow, tankFull, liveTankLevel;
 float ampLow, ampMax;
 float liveAmp;
 //variables wattLow for lowest safe level and wattMax for safe watt max value, since voltage won't be monitored for safety checks.
-float wattLow, wattMax, liveWatt;
+//float wattLow, wattMax, liveWatt;
 //pump status
 bool isPumpRunning = false;
 //float sensor status
@@ -255,8 +255,10 @@ bool floatSensor = false;
 //using sensors or not
 bool useUltrasonic, useSensors, useFloat;
 bool resetFlag = false, updateInProgress = false;
+//global error tracking variable, Core 0 updates it 
+byte raiseError = false;
 //variables voltLow for lowest safe level and voltMax for safe voltage max value.
-float liveVoltage, voltLow, voltMax;
+//float liveVoltage, voltLow, voltMax;
 
 //display update frequency
 unsigned long previousMillis = 0;  // will store last time it was updated
@@ -267,19 +269,20 @@ unsigned long previousMillis1 = 0;  // will store last time it was updated
 long interval1 = 1000;              // interval to wait (milliseconds)
 
 //ZMPT101B Voltage Sensor data
-float testFrequency = 50;                   // test signal frequency (Hz)
+/*float testFrequency = 50;                   // test signal frequency (Hz)
 float windowLength = 40.0 / testFrequency;  // how long to average the signal, for statistics
 
 int Sensor = 0;  //Sensor analog input, here it's A0
 
 float intercept = -0.04;    // to be adjusted based on calibration testing
-float slope = 0.0405;       // to be adjusted based on calibration testing
-float current_Volts = 0.0;  // Voltage
+float slope = 0.0405;       // 0.0405 to be adjusted based on calibration testing
+float current_Volts;  // Voltage
 
 unsigned long updatePeriod = 1000;  //Refresh rate
 unsigned long previousMillis2 = 0;
 
 RunningStatistics inputStats;  //actual calculation of the RMS requires a load of coding, and this saves us from that
+*/
 
 TaskHandle_t loop2Code;
 //core 0 debug update frequency
@@ -371,7 +374,6 @@ void setup(void) {
   FastLED.setBrightness(20);
   leds[0] = CRGB::Red;
   FastLED.show();
-  inputStats.setWindowSecs(windowLength);
   pinMode(BUTTON, INPUT);
   pref.begin("database", false);
   //delay(250);  // wait for the OLED to power up
@@ -391,14 +393,44 @@ void setup(void) {
   delay(1000);
 
   //loading preset values from the memory
-  tankLow = pref.getInt("tankLow", 0);
-  tankFull = pref.getInt("tankFull", 0);
-  ampLow = pref.getInt("ampLow", 0);
-  ampMax = pref.getInt("ampMax", 0);
-  wattLow = pref.getInt("wattLow", 0);
+  /*wattLow = pref.getInt("wattLow", 0);
   wattMax = pref.getInt("wattMax", 0);
   voltLow = pref.getInt("voltLow", 0);
-  voltMax = pref.getInt("voltMax", 0);
+  voltMax = pref.getInt("voltMax", 0);*/
+  bool checkVal = pref.isKey("tankLow");
+  if (!checkVal) {
+    pref.putInt("tankLow", 0);
+  }
+  checkVal = pref.isKey("tankFull");
+  if (!checkVal) {
+    pref.putInt("tankFull", 0);
+  }
+  checkVal = pref.isKey("ampLow");
+  if (!checkVal) {
+    pref.putFloat("ampLow", 0);
+  }
+  checkVal = pref.isKey("ampMax");
+  if (!checkVal) {
+    pref.putFloat("ampMax", 0);
+  }
+  checkVal = pref.isKey("useUltrasonic");
+  if (!checkVal) {
+    pref.putBool("useUltrasonic", 0);
+  }
+  checkVal = pref.isKey("useSensors");
+  if (!checkVal) {
+    pref.putBool("useSensors", 0);
+  }
+  checkVal = pref.isKey("useFloat");
+  if (!checkVal) {
+    pref.putBool("useFloat", 0);
+  }
+
+
+  tankLow = pref.getInt("tankLow", 0);
+  tankFull = pref.getInt("tankFull", 0);
+  ampLow = pref.getFloat("ampLow", 0);
+  ampMax = pref.getFloat("ampMax", 0);
   useUltrasonic = pref.getBool("useUltrasonic", false);
   useSensors = pref.getBool("useSensors", false);
   useFloat = pref.getBool("useFloat", false);
@@ -562,7 +594,9 @@ void setup(void) {
   uSonicSerial.begin(uSonic_BAUD, SERIAL_8N1, UltraRX, UltraTx);
 
   emon1.current(CURRENT_SENSOR_PIN, 27);  // Current: input pin, calibration.
-  analogReadResolution(ADC_BITS);         //Needed for 12bit resolution
+  analogReadResolution(10);               //Needed for 12bit resolution
+
+  //inputStats.setWindowSecs(windowLength);
 
   //create a task that will be executed in the Task1code() function, with priority 1 and executed on core 0
   xTaskCreatePinnedToCore(
@@ -589,20 +623,27 @@ void loop2(void* pvParameters) {
       Serial.print("This task is running on core ");  //debugging purpose
       Serial.println(xPortGetCoreID());
     }
+    /* Sensor = analogRead(VOLTAGE_SENSOR);  // read the analog voltage in value:
+    inputStats.input(Sensor);             // log to Stats function
+    */
+    if (useSensors) {
+      //liveVoltage = readVoltage();
+      //delay(50);
+      liveAmp = readAmpere();
+    }
+    delay(50);
 
     if (useFloat)
       floatSensor = readFloat();  // reads float sensor value and updates it
 
-    if (useSensors) {
-      Sensor = analogRead(VOLTAGE_SENSOR);  // read the analog voltage in value:
-      inputStats.input(Sensor);             // log to Stats function
-      liveVoltage = readVoltage();
-      liveAmp = readAmpere();
-    }
-    delay(100);
-
     if (useUltrasonic)
       liveTankLevel = readUltrasonic();
+
+    if (isPumpRunning) {
+      raiseError = intelligentMonitoring();
+      Serial.println("PUMP RUN ERRORCODE");
+      Serial.println("Code: " + String(raiseError));
+    }
   }
 }
 
@@ -618,6 +659,11 @@ void loop(void) {
   ElegantOTA.loop();
 
   if (!updateInProgress) {
+    if (raiseError != 0 && raiseError != 1) {
+      errorMsg(raiseError);
+      raiseError = 0;
+    }
+
     if (resetFlag)  //after resetting (set in menu options; reset), esp32 will restart
     {
       leds[0] = CRGB::Red;
@@ -635,17 +681,8 @@ void loop(void) {
       ESP.restart();
     }
 
-    if (isPumpRunning) {
-      byte errCode = intelligentMonitoring();
-      if (errCode != 0 && errCode != 1)
-        errorMsg(errCode);
-      Serial.println("PUMP RUN ERROR");
-      Serial.println("Error: " + String(errCode));
-    }
-
     unsigned long currentMillis = millis();
     if (currentMillis - previousMillis >= interval) {
-      // save the last time you blinked the LED
       previousMillis = currentMillis;
 
       DateTime now = rtc.now();
@@ -681,8 +718,8 @@ void loop(void) {
     }
 
 
-    /*long press to activate menu
-  disable menu system when pump is running*/
+    //long press to activate menu
+
     byte count = 0;
     if (digitalRead(BUTTON) == 1) {
       while (digitalRead(BUTTON) == 1) {
@@ -705,22 +742,7 @@ void loop(void) {
         FastLED.show();
         pumpRunSequence();
       } else {
-        if (!isPumpRunning) {  //menu disabled when pump is running
-          menu();
-        } else {
-          leds[0] = CRGB::Red;
-          FastLED.show();
-          delay(200);
-          leds[0] = CRGB::Black;
-          FastLED.show();
-          delay(200);
-          leds[0] = CRGB::Red;
-          FastLED.show();
-          delay(200);
-          leds[0] = CRGB::Black;
-          FastLED.show();
-          delay(200);
-        }
+        menu();
       }
       count = 0;
     }
@@ -848,12 +870,11 @@ void pumpRunSequence(void) {
             byte errorCode = intelligentMonitoring();
             if (errorCode == 0 || errorCode == 1)  //check if there is any error
             {
-              //TURN_ON_RELAY;
-              isPumpRunning = true;
               TURN_ON_RELAY;
               leds[0] = CRGB::Cyan;
               FastLED.show();
               pumpOnDelay();
+              isPumpRunning = true;
               break;
             } else {
               leds[0] = CRGB::Red;
@@ -879,6 +900,7 @@ void pumpRunSequence(void) {
 \n dry run: err = 5
 \n low voltage: err = 6
 \n high voltage: err = 7
+\n Low Ampere: err = 8
 */
 byte intelligentMonitoring() {
   byte err = 0;
@@ -925,8 +947,8 @@ byte intelligentMonitoring() {
     }
   }
 
-  if (useSensors) {
-    liveWatt = liveVoltage * liveAmp;
+  if (useSensors && isPumpRunning) {
+    //liveWatt = liveVoltage * liveAmp;
 
     if (liveAmp > ampMax) {
       err = 3;  //DRY RUN CONDITION WHERE PUMP DRAWS MORE CURRENT
@@ -935,7 +957,14 @@ byte intelligentMonitoring() {
       delay(500);
     }
 
-    if (liveWatt > wattMax) {  //check real values for dry running (case 5) and high watt and combine these if necessary
+    if (liveAmp < ampLow) {
+      err = 8;  //DRY RUN CONDITION WHERE PUMP DRAWS MORE CURRENT
+      TURN_OFF_RELAY;
+      isPumpRunning = false;
+      delay(500);
+    }
+
+    /*if (liveWatt > wattMax) {  //check real values for dry running (case 5) and high watt and combine these if necessary
       err = 4;
       TURN_OFF_RELAY;
       isPumpRunning = false;
@@ -954,9 +983,9 @@ byte intelligentMonitoring() {
       TURN_OFF_RELAY;
       isPumpRunning = false;
       delay(500);
-    }
+    }*/
 
-    if (liveAmp > 1)  //verifies if something is drawing current or not
+    if (liveAmp > 2.0)  //verifies if something is drawing current or not
       isPumpRunning = true;
     else
       isPumpRunning = false;
@@ -983,7 +1012,7 @@ void pumpOnDelay() {
   return;
 }
 
-//reads live values from voltage sensor
+/*reads live values from voltage sensor
 float readVoltage() {
   if ((unsigned long)(millis() - previousMillis2) >= updatePeriod) {
     previousMillis2 = millis();  // update time every second
@@ -991,7 +1020,7 @@ float readVoltage() {
     Serial.print("\n");
 
     current_Volts = intercept + slope * inputStats.sigma();  //Calibartions for offset and amplitude
-    current_Volts = current_Volts * (40.3231);               //Further calibrations for the amplitude
+    current_Volts = current_Volts * (40.3231);               //40.3231 Further calibrations for the amplitude
 
     Serial.print("\tVoltage: ");
     Serial.println(current_Volts);  //Calculation and Value display is done the rest is if you're using an OLED display
@@ -999,7 +1028,7 @@ float readVoltage() {
   if (current_Volts < 0)
     current_Volts = 0;
   return current_Volts;
-}
+}*/
 
 //reads live values from ampere sensor
 double readAmpere() {
@@ -1009,7 +1038,7 @@ double readAmpere() {
 
 //reads live values from Ultrasonic sensor
 int readUltrasonic() {
-  static int x;
+  int x = 0;
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis1 >= interval1) {
     previousMillis1 = currentMillis;
@@ -1017,20 +1046,23 @@ int readUltrasonic() {
     delay(10);
     if (uSonicSerial.available()) {
       //Serial.println(uSonicSerial.readString());
+      delay(100);
       x = ((uSonicSerial.readString()).substring(4, 8)).toInt();
       x = x / 10;
+
       Serial.println(String(x) + " cm");
     }
   }
-  return x;
+  liveTankLevel = x;
+  return liveTankLevel;
 }
 
 //reads live values from Float sensor
 bool readFloat() {
   if (analogRead(FLOAT_SENSOR) > 900)  //FULL/UP
-    floatSensor = true;
-  else  //NOT FULL/DOWN
     floatSensor = false;
+  else  //NOT FULL/DOWN
+    floatSensor = true;
 
   return floatSensor;
 }
@@ -1062,22 +1094,21 @@ void drawTankLevel(byte x = 0) {
 //Live value printer function
 void vitals() {
   if (useSensors) {
-    liveWatt = liveAmp * liveVoltage;
-
-    display.setCursor(50, 12);
-    display.print("Volt: " + String(liveVoltage) + " V");
+    /*display.setCursor(50, 12);
+    display.print("Volt: " + String(liveVoltage) + "V");    
     display.setCursor(50, 22);
-    display.print("Amp : " + String(liveAmp) + " A");
+    liveWatt = liveAmp * liveVoltage;
+    display.print("Watt: " + String(liveAmp * liveVoltage) + " W");*/
     display.setCursor(50, 32);
-    display.print("Watt: " + String(liveAmp * liveVoltage) + " W");
+    display.print("Amp : " + String(liveAmp) + " A");
   }
 
   if (useFloat) {
     display.setCursor(50, 42);
     if (floatSensor)  //CHECK THIS FOR CORRECTION
-      display.print("Flot: Up");
+      display.print("Float: Up");
     else
-      display.print("Flot: Down");
+      display.print("Float: Down");
   }
 
   if (useUltrasonic) {
@@ -1428,9 +1459,9 @@ void dataLimit() {
         else if (option == 2)
           ampereValues();
         else if (option == 3)
-          voltageValues();
+          ;  //voltageValues();
         else if (option == 4)
-          wattValues();
+          ;  //wattValues();
         else if (option == 5)
           return;
       }
@@ -1991,7 +2022,7 @@ void ampereValues() {
               } else {
                 if (option == 1) {
                   ampLow = newValue;  //save ampLow value in preference
-                  pref.putInt("ampLow", ampLow);
+                  pref.putFloat("ampLow", ampLow);
                   break;
                 } else if (option == 2)
                   break;
@@ -2062,7 +2093,7 @@ void ampereValues() {
               } else {
                 if (option == 1) {
                   ampMax = newValue;  //save ampMax value in preference
-                  pref.putInt("ampMax", ampMax);
+                  pref.putFloat("ampMax", ampMax);
                   break;
                 } else if (option == 2)
                   break;
@@ -2166,7 +2197,7 @@ void ampereValues() {
                   newValue = newValue + 0.1;
                 else if (option == 3) {
                   ampLow = newValue;  //save ampLow value in preference
-                  pref.putInt("ampLow", ampLow);
+                  pref.putFloat("ampLow", ampLow);
                   break;
                 } else if (option == 4)
                   break;
@@ -2276,7 +2307,7 @@ void ampereValues() {
                   newValue = newValue + 0.1;
                 else if (option == 3) {
                   ampMax = newValue;  //save ampMax value in preference
-                  pref.putInt("ampMax", ampMax);
+                  pref.putFloat("ampMax", ampMax);
                   break;
                 } else if (option == 4)
                   break;
@@ -2297,7 +2328,7 @@ void ampereValues() {
   }
   pref.end();
 }
-
+/*
 //sets values for voltLow, voltMax using live values from sensor
 void voltageValues() {
   pref.begin("database", false);
@@ -2335,10 +2366,7 @@ void voltageValues() {
         display.print("2. Use manual values");
         display.setCursor(3, 41);
         display.print("3. Exit");
-        display.drawRect(0, 38, 127, 13, 1);
-        /*display.setCursor(3, 55);
-        display.print("4. Exit");
-        display.drawRect(0, 52, 127, 13, 1);*/
+        display.drawRect(0, 38, 127, 13, 1);        
         break;
     }
 
@@ -2766,10 +2794,7 @@ void wattValues() {
         display.print("2. Use manual values");
         display.setCursor(3, 41);
         display.print("3. Exit");
-        display.drawRect(0, 38, 127, 13, 1);
-        /*display.setCursor(3, 55);
-        display.print("4. Exit");
-        display.drawRect(0, 52, 127, 13, 1);*/
+        display.drawRect(0, 38, 127, 13, 1);        
         break;
     }
     if (digitalRead(BUTTON) == 1) {
@@ -3157,7 +3182,7 @@ void wattValues() {
     display.display();
   }
   pref.end();
-}
+}*/
 
 void wifiManagerInfoPrint() {
   display.clearDisplay();
@@ -3417,7 +3442,7 @@ void configSensors() {
       display.setTextSize(1);
       display.setFont(NULL);
       display.setCursor(0, 0);
-      display.println("Current & Voltage");
+      display.println("Current Sensor");
       display.drawLine(0, 8, 127, 8, 1);
       switch (option) {
         case 1:
@@ -3544,6 +3569,7 @@ void configSensors() {
   pref.end();
 }
 
+//Manual time set not implemented yet
 void configTime() {
   byte count = 0, option = 1;
   while (true) {
@@ -3767,12 +3793,12 @@ void totalReset() {
           pref.putString("password", "");
           pref.putInt("tankLow", 0);
           pref.putInt("tankFull", 0);
-          pref.putInt("ampLow", 0);
-          pref.putInt("ampMax", 0);
-          pref.putInt("wattLow", 0);
+          pref.putFloat("ampLow", 0);
+          pref.putFloat("ampMax", 0);
+          /*pref.putInt("wattLow", 0);
           pref.putInt("wattMax", 0);
           pref.putInt("voltLow", 0);
-          pref.putInt("voltMax", 0);
+          pref.putInt("voltMax", 0);*/
           pref.putBool("useUltrasonic", false);
           pref.putBool("useSensors", false);
           pref.putBool("useFloat", false);
@@ -3818,7 +3844,10 @@ void errorMsg(byte code) {
     display.print(" LOW VOLTAGE");
   else if (code == 7)
     display.print(" HIGH VOLTAGE");
+  else if (code == 8)
+    display.print(" LOW AMPERE");
   display.display();
+  digitalWrite(BUZZER_PIN, HIGH);
 
   while (1) {
     display.setTextColor(SH110X_BLACK, SH110X_WHITE);
@@ -3827,6 +3856,7 @@ void errorMsg(byte code) {
     display.print("OKAY");
     display.setTextColor(SH110X_WHITE);
     display.display();
+    delay(50);
 
     byte count = 0;
     while (1) {
@@ -3839,8 +3869,10 @@ void errorMsg(byte code) {
           delay(50);
         }
 
-        if (count >= 1)
+        if (count >= 1) {
+          digitalWrite(BUZZER_PIN, LOW);
           return;
+        }
       }
     }
   }
