@@ -2,7 +2,7 @@
 ## A pump controller with dry running protection, time-left to fill, diagnostics and other smart features.
 
 ## Hardware:
-1. DOIT ESP32 DEVKIT V1 (30 pin)
+1. Tested on: DOIT ESP32 DEVKIT V1 (30 pin)
 2. 128x64 OLED Display
 3. ZMPT101B Voltage Sensor
 4. DS1307 RTC
