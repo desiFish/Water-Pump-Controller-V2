@@ -6,7 +6,7 @@
 2. 128x64 OLED Display <br>
 ~3. ZMPT101B Voltage Sensor~
 4. DS1307 RTC
-5. SCT013 30A/1V Current sensor
+5. SCT013 30A/1V Current sensor (Check for [Wiring](https://simplyexplained.com/blog/Home-Energy-Monitor-ESP32-CT-Sensor-Emonlib/))
 6. AJ-SR04 Ultrasonic Sensor(Water Proof) (Check [Mode 2](https://www.makerguides.com/interfacing-esp32-and-jsn-sr04t-waterproof-ultrasonic-sensor/#Mode_2_of_JSN-SR04T_Sensor) for connection)
 7. WS2812B LED (Single LED Module)
 8. Any Push Button (I used metal one, feels sturdy)
