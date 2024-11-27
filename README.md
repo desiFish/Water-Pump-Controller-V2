@@ -24,15 +24,15 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 
 <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x2.jpg" alt="pictures-of-controller" width="400" height="300">
 
-<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x3.jpg" alt="pictures-of-controller" width="400" height="300">
+<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x3.jpg" alt="pictures-of-controller" width="400" height="500">
 
 <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x4.jpg" alt="pictures-of-controller" width="400" height="300">
 
-<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x5.jpg" alt="pictures-of-controller" width="400" height="300">
+<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x5.jpg" alt="pictures-of-controller" width="500" height="300">
 
-<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x6.jpgg" alt="pictures-of-controller" width="400" height="300">
+<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x6.jpg" alt="pictures-of-controller" width="400" height="300">
 
-<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x7.jpg" alt="pictures-of-controller" width="400" height="300">
+<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x7.jpg" alt="pictures-of-controller" width="400" height="500">
 
 ## Some of the Features
 1. Dual core utilisation of ESP32, one core working with UI and another monitoring sensors.
