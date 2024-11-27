@@ -251,10 +251,12 @@ bool floatSensor = false;
 //using sensors or not
 bool useUltrasonic, useSensors, useFloat, useWifi;
 bool resetFlag = false, updateInProgress = false;
+//time and timer related variables
+byte timeHour, timeMinute, timerHour = 0, timerMinute = 0, timerSecond = 0, timerCount = 0;
+//for holding water level (in %)
+byte holdData;
 //global error tracking variable, Core 0 updates it
 byte raiseError = false;
-//variables voltLow for lowest safe level and voltMax for safe voltage max value.
-//float liveVoltage, voltLow, voltMax;
 
 //display update frequency
 unsigned long previousMillis = 0;  // will store last time it was updated
@@ -262,19 +264,13 @@ long interval = 1000;              // interval to wait (milliseconds)
 
 //ultrasonic update frequency
 unsigned long previousMillis1 = 0;  // will store last time it was updated
-long interval1 = 1000;              // interval to wait (milliseconds)
+long interval1 = 3000;              // interval to wait (milliseconds)
 
 //float update frequency
 unsigned long previousMillis2 = 0;  // will store last time it was updated
 long interval2 = 1000;              // interval to wait (milliseconds)
 
 TaskHandle_t loop2Code;
-//core 0 debug update frequency
-unsigned long previousMillis3 = 0;  // will store last time it was updated
-long interval3 = 1000;
-//core 1 debug update frequency
-unsigned long previousMillis4 = 0;  // will store last time it was updated
-long interval4 = 1000;
 
 //Elegant OTA related task
 void onOTAStart() {
@@ -419,6 +415,35 @@ void setup(void) {
   useFloat = pref.getBool("useFloat", false);
   useWifi = pref.getBool("useWifi", true);
 
+  if (!rtc.begin()) {
+    Serial.println("Couldn't find RTC");
+    Serial.flush();
+    display.clearDisplay();
+    display.setTextColor(SH110X_WHITE);
+    display.setTextSize(1);
+    display.setFont(NULL);
+    display.setCursor(34, 10);
+    display.println("RTC FAILED");
+    display.setTextColor(SH110X_BLACK, SH110X_WHITE);
+    display.setCursor(50, 41);
+    display.fillRect(47, 40, 29, 10, 1);
+    display.print("OKAY");
+    display.setTextColor(SH110X_WHITE);
+    display.display();
+
+    byte count = 0;
+    while (true) {
+      if (digitalRead(BUTTON) == 1) {
+        while (digitalRead(BUTTON) == 1) {
+          delay(150);
+          count++;
+        }
+        if (count >= 1)
+          break;
+      }
+    }
+  }
+
   leds[0] = CRGB::Yellow;
   FastLED.show();
 
@@ -497,9 +522,9 @@ void setup(void) {
     display.setCursor(15, 55);
     display.println(" CONNECT");
     display.display();
-    /*
-  count variable stores the status of WiFi connection. 0 means NOT CONNECTED. 1 means CONNECTED
-  */
+
+    //count variable stores the status of WiFi connection. 0 means NOT CONNECTED. 1 means CONNECTED
+
     bool count = 1;
     while (WiFi.waitForConnectResult() != WL_CONNECTED) {
       display.clearDisplay();
@@ -542,34 +567,23 @@ void setup(void) {
 
       server.begin();
       Serial.println("HTTP server started");
-    }
-  }
+      //RTC Update at startup
+      timeClient.begin();
+      if (timeClient.update()) {
+        time_t rawtime = timeClient.getEpochTime();
+        struct tm* ti;
+        ti = localtime(&rawtime);
 
-  if (!rtc.begin()) {
-    Serial.println("Couldn't find RTC");
-    Serial.flush();
-    display.clearDisplay();
-    display.setTextColor(SH110X_WHITE);
-    display.setTextSize(1);
-    display.setFont(NULL);
-    display.setCursor(34, 10);
-    display.println("RTC FAILED");
-    display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-    display.setCursor(50, 41);
-    display.fillRect(47, 40, 29, 10, 1);
-    display.print("OKAY");
-    display.setTextColor(SH110X_WHITE);
-    display.display();
+        uint16_t year = ti->tm_year + 1900;
+        uint8_t x = year % 10;
+        year = year / 10;
+        uint8_t y = year % 10;
+        year = y * 10 + x;
 
-    byte count = 0;
-    while (true) {
-      if (digitalRead(BUTTON) == 1) {
-        while (digitalRead(BUTTON) == 1) {
-          delay(150);
-          count++;
-        }
-        if (count >= 1)
-          break;
+        uint8_t month = ti->tm_mon + 1;
+
+        uint8_t day = ti->tm_mday;
+        rtc.adjust(DateTime(year, month, day, timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds()));
       }
     }
   }
@@ -579,9 +593,9 @@ void setup(void) {
   uSonicSerial.begin(uSonic_BAUD, SERIAL_8N1, UltraRX, UltraTx);
 
   emon1.current(CURRENT_SENSOR_PIN, 27);  // Current: input pin, calibration.
-  analogReadResolution(10);               //Needed read resolution
+  analogReadResolution(10);               //read resolution (10=10 bits)
 
-  //create a task that will be executed in the Task1code() function, with priority 1 and executed on core 0
+  //create a task that will be executed in the loop2() function, with priority 1 and executed on core 0
   xTaskCreatePinnedToCore(
     loop2,        // Task function.
     "loop2Code",  // name of task.
@@ -597,53 +611,62 @@ vital sensor data and taking actions based on that. Even if user is operating Me
 */
 void loop2(void* pvParameters) {
   for (;;) {
-    /*unsigned long currentMillis = millis();
-    if (currentMillis - previousMillis3 >= interval3) {
-      // save the last time you blinked the LED
-      previousMillis3 = currentMillis;
-      Serial.print("This task is running on core ");  //debugging purpose
-      Serial.println(xPortGetCoreID());
-    }*/
     if (useSensors)
       liveAmp = readAmpere();
-
     delay(10);
 
     if (useFloat)
       floatSensor = readFloat();  // reads float sensor value and updates it
     delay(10);
+
     if (useUltrasonic)
       liveTankLevel = readUltrasonic();
     delay(10);
+
     if (isPumpRunning) {
       raiseError = intelligentMonitoring();
       Serial.print("PUMP RUN ERRORCODE");
       Serial.println(": " + String(raiseError));
     }
-    delay(20);
+    delay(10);
+
+    DateTime now = rtc.now();
+    timeHour = now.hour();
+    timeMinute = now.minute();
+
+    if (isPumpRunning) {
+      byte secs = now.second();
+      if (timerCount != secs) {
+        timerCount = secs;
+        timerSecond++;
+        if (timerSecond > 59) {
+          timerSecond = 0;
+          timerMinute++;
+          if (timerMinute > 59) {
+            timerMinute = 0;
+            timerHour++;
+            if (timerHour > 23)
+              timerHour = 0;
+          }
+        }
+      }
+    }
+
+    delay(10);
   }
 }
 
 //loop() runs on Core 1, loop performs User Interaction and User Interface
 void loop(void) {
-  unsigned long currentMillis4 = millis();
-  if (currentMillis4 - previousMillis4 >= interval4) {
-    // save the last time you blinked the LED
-    previousMillis4 = currentMillis4;
-    Serial.print("This task is running on core ");  //debugging purpose
-    Serial.println(xPortGetCoreID());
-  }
-
   //no OTA during pumpIsRunning
   if (!isPumpRunning && useWifi)
     ElegantOTA.loop();
 
+  if (raiseError != 0 && raiseError != 1) {
+    errorMsg(raiseError);
+    raiseError = 0;
+  }
   if (!updateInProgress) {
-    if (raiseError != 0 && raiseError != 1) {
-      errorMsg(raiseError);
-      raiseError = 0;
-    }
-
     if (resetFlag)  //after resetting (set in menu options; reset), esp32 will restart
     {
       leds[0] = CRGB::Red;
@@ -657,24 +680,21 @@ void loop(void) {
       display.setCursor(5, 40);
       display.print("RESTART NOW");
       display.display();
-      delay(4000);
+      delay(3000);
       ESP.restart();
     }
 
     unsigned long currentMillis = millis();
     if (currentMillis - previousMillis >= interval) {
       previousMillis = currentMillis;
-
-      DateTime now = rtc.now();
-
       display.clearDisplay();
       display.setTextSize(1);
       display.setFont(NULL);
 
       display.setCursor(10, 1);
-      display.print(now.hour() < 10 ? "0" + String(now.hour()) : String(now.hour()));  // if hour or miute is less than 10 put a 0 before it
+      display.print(timeHour < 10 ? "0" + String(timeHour) : String(timeHour));  // if hour or minute is less than 10 put a 0 before it
       display.print(":");
-      display.print(now.minute() < 10 ? "0" + String(now.minute()) : String(now.minute()));
+      display.print(timeMinute < 10 ? "0" + String(timeMinute) : String(timeMinute));
 
       display.setCursor(60, 1);
       if (isPumpRunning) {
@@ -691,38 +711,41 @@ void loop(void) {
         int sonar = liveTankLevel;
         sonar = tankLow - sonar;
         sonar = (sonar / float(tankLow - tankFull)) * 100;
+        if (sonar > 99)
+          sonar = 99;
+        else if (sonar < 1)
+          sonar = 0;
         drawTankLevel(sonar);
       }
       vitals();
       display.display();
     }
+  }
 
-    //long press to activate menu
-
-    byte count = 0;
-    if (digitalRead(BUTTON) == 1) {
-      while (digitalRead(BUTTON) == 1) {
-        count++;
-        if (count >= 1 && count <= 6) {
-          blinkOrange(1, 20, 50);
-        } else {
-          blinkOrange(0, 150, 0);
-          delay(100);
-        }
-        delay(50);
-      }
-
-      FastLED.setBrightness(20);
-      leds[0] = CRGB::Black;
-      FastLED.show();
-
+  //long press to activate menu
+  byte count = 0;
+  if (digitalRead(BUTTON) == 1) {
+    while (digitalRead(BUTTON) == 1) {
+      count++;
       if (count >= 1 && count <= 6) {
-        leds[0] = CRGB::Yellow;
-        FastLED.show();
-        pumpRunSequence();
-      } else
-        menu();
+        blinkOrange(1, 20, 50);
+      } else {
+        blinkOrange(0, 150, 0);
+        delay(100);
+      }
+      delay(50);
     }
+
+    FastLED.setBrightness(20);
+    leds[0] = CRGB::Black;
+    FastLED.show();
+
+    if (count >= 1 && count <= 6) {
+      leds[0] = CRGB::Yellow;
+      FastLED.show();
+      pumpRunSequence();
+    } else
+      menu();
   }
 }
 
@@ -783,6 +806,7 @@ void pumpRunSequence(void) {
           else if (option == 2) {
             isPumpRunning = false;
             TURN_OFF_RELAY;
+            timerReset();
             delay(300);
             break;
           }
@@ -849,6 +873,7 @@ void pumpRunSequence(void) {
               FastLED.show();
               pumpOnDelay();
               isPumpRunning = true;
+              holdData = 0;
               break;
             } else {
               errorMsg(errorCode);
@@ -877,12 +902,27 @@ void pumpRunSequence(void) {
 byte intelligentMonitoring() {
   byte err = 0;
 
-  if (isPumpRunning)  //PUMP ON OFF MASTER CONTROL
+  if (isPumpRunning)  //PUMP ON OFF BACKUP CONTROL
     TURN_ON_RELAY;
   else
     TURN_OFF_RELAY;
 
-  if (useUltrasonic && !useFloat) {  //if float is diabled
+  if (useFloat)
+    if (!floatSensor)  //update the floatSensor values
+      err = 1;
+
+  if (useFloat) {
+    if (floatSensor)  //update the floatSensor values
+    {
+      err = 2;
+      TURN_OFF_RELAY;
+      delay(200);
+      isPumpRunning = false;
+    }
+  }
+
+  //DISABLED THE USE OF USONIC SENSOR BECAUSE THE SURFACE OF WATER FORMS WAVES AND THE READINGS ARE HENCE DISTRUBED
+  /*if (useUltrasonic && !useFloat) {  //if float is diabled
     if (liveTankLevel > tankFull)
       err = 1;
   } else if (useFloat && !useUltrasonic) {  //if ultrasonic is diabled
@@ -916,11 +956,9 @@ byte intelligentMonitoring() {
       delay(200);
       isPumpRunning = false;
     }
-  }
+  }*/
 
   if (useSensors && isPumpRunning) {
-    //liveWatt = liveVoltage * liveAmp;
-
     if (liveAmp > ampMax) {
       err = 3;  //RUN CONDITION WHERE PUMP DRAWS MORE CURRENT
       TURN_OFF_RELAY;
@@ -940,8 +978,14 @@ byte intelligentMonitoring() {
     else
       isPumpRunning = false;
   }
-
   return err;
+}
+
+void timerReset() {
+  timerMinute = 0;
+  timerSecond = 0;
+  timerHour = 0;
+  timerCount = 0;
 }
 
 void pumpOnDelay() {
@@ -1006,43 +1050,66 @@ bool readFloat() {
 }
 
 // send data in percent. it prints tank water level in graphical form
-void drawTankLevel(byte x = 0) {
+void drawTankLevel(byte x) {
   byte temp = x;
-  if (x > 99)
-    x = 99;
+  if (temp >= 96)  //ultrasonic value fluctuates a lot when water is near
+    temp = 100;
+
+  if (isPumpRunning) {
+    if (x > holdData)  //stops the fluctuations in reading due to waves from falling water
+      holdData = x;
+  } else
+    holdData = x;
+
   display.drawRoundRect(3, 20, 40, 41, 3, 1);
   display.drawRoundRect(13, 18, 20, 3, 3, 1);
 
-  if (x == 0)
+  if (holdData == 0)
     display.fillRect(5, 57, 36, 0, 1);
   else {
-    if (x < 3)
-      x = 3;
-
-    byte y = x / 3;
+    if (holdData < 3)
+      holdData = 3;
+    byte y = holdData / 3;
     display.fillRect(5, 57, 36, -(y), 1);  //y is max -33
+  }
 
+  display.setTextColor(SH110X_BLACK, SH110X_WHITE);
+  if (temp == 100) {
+    display.fillRect(11, 27, 25, 9, 1);
+    display.setCursor(12, 28);
+  } else {
     display.fillRect(14, 27, 19, 9, 1);  //creates background for the text
     display.setCursor(15, 28);
-    display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-    display.print(String(temp) + "%");
-    display.setTextColor(SH110X_WHITE);
   }
+  display.print(String(temp) + "%");
+  display.setTextColor(SH110X_WHITE);
 }
 
 //Live value printer function
 void vitals() {
-  if (useSensors) {
-    display.setCursor(50, 32);
-    display.print("Amp : " + String(liveAmp) + " A");
+  if (isPumpRunning) {
+    display.setCursor(50, 22);
+    display.print("Time:");
+    display.print(timerHour < 10 ? "0" + String(timerHour) : String(timerHour));  // if hour or minute is less than 10 put a 0 before it
+    display.print(":");
+    display.print(timerMinute < 10 ? "0" + String(timerMinute) : String(timerMinute));
+    display.print(":");
+    display.print(timerSecond < 10 ? "0" + String(timerSecond) : String(timerSecond));
   }
 
   if (useFloat) {
+    if (floatSensor) {
+      display.setCursor(62, 32);
+      display.print("TANK FULL");
+    } else {
+      display.setCursor(65, 32);
+      display.print("NOT FULL");
+    }
+  }
+
+  if (useSensors) {
     display.setCursor(50, 42);
-    if (floatSensor)
-      display.print("Float: Full");
-    else
-      display.print("Float: N.Full");
+    display.print("Amp : " + String(liveAmp) + " A");
   }
 
   if (useUltrasonic) {
@@ -2054,25 +2121,6 @@ void ampereValues() {
   pref.end();
 }
 
-void wifiManagerInfoPrint() {
-  display.clearDisplay();
-  display.setTextColor(SH110X_WHITE);
-  display.setTextSize(1);
-  display.setFont(NULL);
-  display.setCursor(1, 0);
-  display.println("WIFI MANAGER");
-  display.drawLine(0, 8, 127, 8, 1);
-  display.setCursor(0, 10);
-  display.print("Turn ON WiFi on your phone/laptop.");
-  display.setCursor(0, 30);
-  display.print("Connect: ");
-  display.print("WIFI_MANAGER");
-  display.setCursor(0, 42);
-  display.print("Password: ");
-  display.print("WIFImanager");
-  display.display();
-}
-
 void configurations() {
   pref.begin("database", false);
   byte count = 0, option = 1;
@@ -2570,7 +2618,7 @@ void configTime() {
   display.clearDisplay();
 }
 
-//Check this for disconnection error
+//Test this for disconnection error
 void autoTimeUpdate() {
   if (WiFi.status() == WL_CONNECTED) {
     timeClient.begin();
@@ -2745,9 +2793,6 @@ void totalReset() {
 \n high voltage: err = 7
 */
 void errorMsg(byte code) {
-  if (code == 0 || code == 1)
-    return;
-
   display.clearDisplay();
   display.setTextColor(SH110X_WHITE);
   display.setTextSize(1);
@@ -2768,7 +2813,18 @@ void errorMsg(byte code) {
     display.print(" HIGH VOLTAGE");
   else if (code == 8)
     display.print(" LOW AMPERE");
+
+  //Print how much time it took
+  display.setCursor(0, 25);
+  display.print("Time Taken: ");
+  display.print(timerHour < 10 ? "0" + String(timerHour) : String(timerHour));  // if hour or minute is less than 10 put a 0 before it
+  display.print(":");
+  display.print(timerMinute < 10 ? "0" + String(timerMinute) : String(timerMinute));
+  display.print(":");
+  display.print(timerSecond < 10 ? "0" + String(timerSecond) : String(timerSecond));
   display.display();
+
+  timerReset();
 
   if (code == 2) {
     FastLED.setBrightness(250);
@@ -2781,7 +2837,7 @@ void errorMsg(byte code) {
   }
   FastLED.show();
 
-  while (1) {
+  while (true) {
     display.setTextColor(SH110X_BLACK, SH110X_WHITE);
     display.setCursor(50, 41);
     display.fillRect(47, 40, 29, 10, 1);
@@ -2813,7 +2869,7 @@ void errorMsg(byte code) {
 
 /*
 Prints various system related data
-!! Add Current Sensor and Ultrasonic Sensor
+!! Add Current Sensor
 */
 void sysWatcher() {
   byte data = 0, option = 0, count = 0;
@@ -2849,6 +2905,10 @@ void sysWatcher() {
       display.clearDisplay();
       display.setCursor(0, 0);
       display.println("Float: " + String(floatSensor));
+      if (useUltrasonic) {
+        display.setCursor(0, 10);
+        display.println("U.S.: " + String(liveTankLevel) + " cm");
+      }
       display.fillCircle(70, 50, 2, 1);
       display.drawCircle(59, 50, 2, 1);
     }
@@ -2906,6 +2966,26 @@ void sysWatcher() {
     }
     count = 0;
   }
+}
+
+//WIFI MANAGER HELPING FUNCTIONS
+void wifiManagerInfoPrint() {
+  display.clearDisplay();
+  display.setTextColor(SH110X_WHITE);
+  display.setTextSize(1);
+  display.setFont(NULL);
+  display.setCursor(1, 0);
+  display.println("WIFI MANAGER");
+  display.drawLine(0, 8, 127, 8, 1);
+  display.setCursor(0, 10);
+  display.print("Turn ON WiFi on your phone/laptop.");
+  display.setCursor(0, 30);
+  display.print("Connect: ");
+  display.print("WIFI_MANAGER");
+  display.setCursor(0, 42);
+  display.print("Password: ");
+  display.print("WIFImanager");
+  display.display();
 }
 
 void WiFiEvent(WiFiEvent_t event) {
