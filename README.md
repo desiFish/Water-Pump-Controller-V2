@@ -20,6 +20,20 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 ## Pictures, Schematics and other stuff (COMING SOON, check ***issues***)
 <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/SCH_Schematic1.png" alt="Schematics" width="400" height="300">
 
+<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x1.jpg" alt="pictures-of-controller" width="400" height="300">
+
+<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x2.jpg" alt="pictures-of-controller" width="400" height="300">
+
+<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x3.jpg" alt="pictures-of-controller" width="400" height="300">
+
+<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x4.jpg" alt="pictures-of-controller" width="400" height="300">
+
+<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x5.jpg" alt="pictures-of-controller" width="400" height="300">
+
+<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x6.jpgg" alt="pictures-of-controller" width="400" height="300">
+
+<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x7.jpg" alt="pictures-of-controller" width="400" height="300">
+
 ## Some of the Features
 1. Dual core utilisation of ESP32, one core working with UI and another monitoring sensors.
 2. Full Induction Pump Protection System, tested on 240V 1HP Water Pump (*)
