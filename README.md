@@ -17,7 +17,7 @@
 ## Upcoming Features
 Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/issues)
 
-## Pictures, Schematics and other stuff (COMING SOON, check ***issues***)
+## Pictures, Schematics and other stuff
 <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/SCH_Schematic1.png" alt="Schematics" width="400" height="300">
 
 <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x1.jpg" alt="pictures-of-controller" width="400" height="300">
