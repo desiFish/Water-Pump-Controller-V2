@@ -1,6 +1,9 @@
 # Advanced Water Pump Controller
 ## A pump/induction motor controller with dry running protection, timer, error detection, time-left to fill, diagnostics and other smart features.
 
+## INDEX
+1. [Hardware](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#hardware)
+
 ## Hardware:
 1. Tested on: DOIT ESP32 DEVKIT V1 (30 pin)
 2. 128x64 OLED Display <br>
