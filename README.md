@@ -52,12 +52,19 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 *** ***Deals with high voltage current, be ultra cautious***
 
 ## Temporary Fix
-The program works great just using Current Sensor, Float Sensor and Distance Sensor (Assuming you have some kind of Voltage protection system in your house). Even without Voltage monitoring, you can kinda predict it using Current i.e. When Voltage Rises Current drops, When Voltage drops Current rises.
+The program works great just using Current Sensor, Float Sensor and Distance Sensor (Assuming you have some kind of Voltage protection system in your house). Even without Voltage monitoring, you can kinda predict it using Current i.e. When Voltage Rises Current drops, and When Voltage drops Current rises.
 REMEMBER TO CALIBRATE THE CURRENT SENSOR!! The easiest way is to verify it with an Electric Meter/Energy Meter installed by your electricity company and adjust the calibration value, for me, it is 27.
 In my case, I get 220-240 volts (from the energy meter), and the ampere is around 2.6 A to 2.9 A for 1 HP Induction Motor. And I have a digital Electricity protection system in my house.
 
+## The Logging Functionality
+This program can now log time-taken to fill the tank and other parameters in google sheet. I have used Pythonanywheere for receiving those data from ESP32 in JSON/POST format. The program in Pythonanywhere adds it to Google Sheets. Follow up to step 2 of [this](https://randomnerdtutorials.com/esp32-datalogging-google-sheets/) for getting credentials from Google Cloud. Then you can check the "resources" folder for the Python code written for FLASK, which writes the data in Google sheet. Please let me know if you have any doubts.
+There is a different version of this program, which directly stores the data in Google Sheets without using any middleman, it is stored in the "resources" folder as well. PLEASE CHECK THE HEADER COMMENT of that program for board selection and partition scheme information. I am not using this version because it takes a lot of memory but you can always change the partition scheme and use it.
+
+### Known Issues 1.2.0
+* Same as 1.1.1-beta
+* Ultrasonic works as of now (when it is connected), because the water is falling from height and waves are forming, hence accuracy is affected.
 ### Known Issues 1.1.1-beta
-* When ultrasonic is not connected, but turned on in settings, the ESP32 restarts in loop. The primary issue is that the Serial Monitor for ultrasonic returns garbage values even when nothing is connected and ESP32 tries to make sense of it and fails. The secondary issue is that it is running on CORE 0 nd hence there is some kind of issue that is not faced by CORE 1 a.k.a. loop(). I'll check it in details later.
+* When ultrasonic is not connected, but turned on in settings, the ESP32 restarts in loop. The primary issue is that the Serial Monitor for ultrasonic returns garbage values even when nothing is connected and ESP32 tries to make sense of it and fails. The secondary issue is that it is running on CORE 0 nd hence there is some kind of issue that is not faced by CORE 1 a.k.a. loop(). I'll check it in detail later.
 * Removed voltage sensor completely for now.
   
 ### Known Issues 1.1.0-beta
