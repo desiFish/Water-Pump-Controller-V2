@@ -3,6 +3,12 @@
 
 ## INDEX
 1. [Hardware](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#hardware)
+2. [UPCOMING FEATURES](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#upcoming-features)
+3. [PICTURES](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#pictures-schematics-and-other-stuff)
+4. [FEATURES](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#some-of-the-features)
+5. [CALIBRATION](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#calibration)
+6. [LOGGING FUNCTION](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#the-logging-functionality)
+7. [ISSUES](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#issues)
 
 ## Hardware:
 1. Tested on: DOIT ESP32 DEVKIT V1 (30 pin)
@@ -54,7 +60,7 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 ** ***Sensors used in this project are hobby level, please don't expect industry standards. Sensors may fail, and devices may fail. Be cautious and use it at your own risk*** </br>
 *** ***Deals with high voltage current, be ultra cautious***
 
-## Temporary Fix
+## CALIBRATION
 The program works great just using Current Sensor, Float Sensor and Distance Sensor (Assuming you have some kind of Voltage protection system in your house). Even without Voltage monitoring, you can kinda predict it using Current i.e. When Voltage Rises Current drops, and When Voltage drops Current rises.
 REMEMBER TO CALIBRATE THE CURRENT SENSOR!! The easiest way is to verify it with an Electric Meter/Energy Meter installed by your electricity company and adjust the calibration value, for me, it is 27.
 In my case, I get 220-240 volts (from the energy meter), and the ampere is around 2.6 A to 2.9 A for 1 HP Induction Motor. And I have a digital Electricity protection system in my house.
@@ -63,6 +69,7 @@ In my case, I get 220-240 volts (from the energy meter), and the ampere is aroun
 This program can now log time-taken to fill the tank and other parameters in google sheet. I have used Pythonanywheere for receiving those data from ESP32 in JSON/POST format. The program in Pythonanywhere adds it to Google Sheets. Follow up to step 2 of [this](https://randomnerdtutorials.com/esp32-datalogging-google-sheets/) for getting credentials from Google Cloud. Then you can check the "resources" folder for the Python code written for FLASK, which writes the data in Google sheet. Please let me know if you have any doubts.
 There is a different version of this program, which directly stores the data in Google Sheets without using any middleman, it is stored in the "resources" folder as well. PLEASE CHECK THE HEADER COMMENT of that program for board selection and partition scheme information. I am not using this version because it takes a lot of memory but you can always change the partition scheme and use it.
 
+## ISSUES
 ### Known Issues 1.2.0
 * Same as 1.1.1-beta
 * Ultrasonic works as of now (when it is connected), because the water is falling from height and waves are forming, hence accuracy is affected.
