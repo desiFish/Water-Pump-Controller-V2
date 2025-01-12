@@ -169,68 +169,95 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 
 ## ⭐ Features
 
-### System Architecture
-- **🧠 Dual Core Processing**
-  - 💻 Core 1: Handles user interface and display updates
-  - 🔄 Core 2: Dedicated to real-time sensor monitoring and safety checks
-- **💾 Memory Management**
-  - ⚙️ Configurable sensor enables/disables to optimize memory usage
-  - 📦 Persistent storage using Preferences Library for all settings
+### 🎛️ System Architecture
+- **🧮 Dual Core Processing**
+  - 🖥️ Core 1: User Interface & Display
+    - 🎨 UI Rendering
+    - 📱 Menu System
+    - 🔄 Display Updates
+  - 🤖 Core 2: Sensor & Safety
+    - 📊 Real-time Monitoring
+    - ⚡ Power Management
+    - 🛡️ Protection Systems
 
-### Protection Systems
-- **💧 Pump Protection**
-  - 🚰 Dry run detection and automatic shutdown
-  - ⚠️ Current-based overload protection
-  - Tested with 240V 1HP water pump
-  - Real-time current and power monitoring
-- **🔒 Safety Features**
-  - 🚨 Automatic shutdown on abnormal conditions
-  - 🎚️ Configurable threshold limits for all parameters
-  - 🛑 Emergency stop functionality
+- **💾 Memory System**
+  - 🎚️ Dynamic Sensor Configuration
+  - 📦 Persistent Settings Storage
+  - 🔧 Resource Optimization
 
-### Smart Controls
+### 🛡️ Protection Systems
+- **💧 Pump Safety**
+  - 🚱 Dry Run Prevention
+    - 🔍 Continuous Monitoring
+    - 🛑 Auto Shutdown
+  - ⚡ Overload Protection
+    - 📈 Current Monitoring
+    - 🚨 Threshold Alerts
+  - 🔌 Short Circuit Guard
+    - ⚠️ Fault Detection
+    - 🚫 Emergency Cutoff
+
+### 🎮 Smart Controls
 - **🔘 One-Button Interface**
-  - Short press: Navigate through menus
-  - Long press: Select/Confirm options
-  - LED feedback for button actions
-- **Display System**
-  - 1.3" 128x64 OLED display for clear visibility
-  - RGB LED status indicators
-  - Buzzer alerts for critical notifications
+  - 👆 Short Press Navigation
+  - 👇 Long Press Selection
+  - 🌈 RGB Status Feedback
+- **📟 Display System**
+  - 📱 1.3" OLED Screen
+  - 📊 Real-time Stats
+  - 🚦 Status Indicators
+  - 🔊 Audio Alerts
 
-### Water Level Management
-- **Dual Sensor System**
-  - Primary: Float sensor for reliable level detection
-  - Secondary: Waterproof ultrasonic sensor for real-time level monitoring
-  - Automatic pump control based on tank levels
+### 💧 Water Management
+- **📏 Level Monitoring**
+  - 🎚️ Float Sensor (Primary)
+    - ✅ Reliable Detection
+    - 🛑 Overflow Prevention
+  - 📡 Ultrasonic Sensor
+    - 📊 Real-time Monitoring
+    - 📈 Level Tracking
 
-### Connectivity
-- **WiFi Capabilities**
-  - Built-in WiFi Manager for easy setup
-  - Smartphone-based configuration
-  - OTA (Over-The-Air) firmware updates
-  - Automatic RTC synchronization via WiFi
+### 🌐 Connectivity
+- **📡 WiFi Features**
+  - 📱 Smart Device Setup
+  - 🔄 OTA Updates
+  - ⏰ Auto Time Sync
+  - 📊 Remote Monitoring
 
-### Time Management
-- **RTC Integration**
-  - DS1307 Real-Time Clock
-  - Scheduled operations support
-  - Time-based automation features
-  - Power failure time tracking
+### ⏱️ Time Management
+- **🕒 RTC Features**
+  - 📅 Scheduling
+  - ⚡ Power Monitoring
+  - 🔄 Auto Recovery
+  - 📊 Time Tracking
 
-### Data Logging
-- **Remote Monitoring**
-  - Google Sheets integration for data logging
-  - Fill time analytics
-  - Performance tracking
-  - Remote status monitoring
+### 📊 Data Analytics
+- **☁️ Cloud Integration**
+  - 📈 Google Sheets Logging
+  - 📊 Performance Analytics
+  - 📉 Usage Statistics
+  - 🔍 System Diagnostics
 
-⚠️ **Configuration Notes:**
-- All protection parameters are user-configurable through the menu system
-- Initial calibration required for optimal performance
-- Refer to calibration section for sensor setup guidelines
+> 💡 **Pro Tips:**
+> - 🔧 Configure sensors based on your setup
+> - ⚙️ Adjust thresholds for optimal performance
+> - 📱 Use WiFi features for remote monitoring
+> - 🔄 Keep firmware updated for best results
 
-> 💡 **Future Updates:** More features are being developed. Check the Issues section for upcoming additions.
+<div align="center">
+<table>
+<tr>
+<td align="center">
+<img src="https://img.shields.io/badge/🔒_Safety-Enabled-success?style=for-the-badge" alt="Safety"/>
+</td>
+<td align="center">
+<img src="https://img.shields.io/badge/📊_Monitoring-Real--time-blue?style=for-the-badge" alt="Monitoring"/>
+</td>
+<td align="center">
+<img src="https://img.shields.io/badge/⚡_Power-Managed-orange?style=for-the-badge" alt="Power"/>
+</td>
+</tr>
+</table>
 </div>
 
 <div style="background-color: #F5EEF8; padding: 20px; border-radius: 10px; margin-top: 20px;">
