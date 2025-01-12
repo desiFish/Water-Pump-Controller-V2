@@ -15,24 +15,56 @@
     <img src="https://img.shields.io/badge/Arduino-Compatible-green?style=flat-square" alt="Arduino Compatible">
   </p>
   
-  <div style="background-color: #EBF5FB; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-    <h3 style="color: #2874A6; margin-bottom: 15px;">🛠️ Key Features</h3>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-      <div style="background-color: white; padding: 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-        <h4 style="color: #2E86C1; margin: 0 0 10px 0;">✅ Protection</h4>
-        <p>Advanced dry running protection with real-time monitoring</p>
+  <div style="background-color: #EBF5FB; padding: 30px; border-radius: 12px; margin: 20px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <h3 style="color: #2874A6; margin-bottom: 25px; text-align: center; font-size: 24px;">🛠️ Key Features</h3>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+      <!-- Protection Features -->
+      <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 4px solid #3498DB;">
+        <h4 style="color: #2E86C1; margin: 0 0 15px 0; display: flex; align-items: center;">
+          <span style="font-size: 24px; margin-right: 10px;">🛡️</span> Protection Features
+        </h4>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          <li style="margin-bottom: 8px;">✅ Dry Running Protection</li>
+          <li style="margin-bottom: 8px;">✅ Overload Protection</li>
+          <li style="margin-bottom: 8px;">✅ Short Circuit Safety</li>
+        </ul>
       </div>
-      <div style="background-color: white; padding: 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-        <h4 style="color: #2E86C1; margin: 0 0 10px 0;">⏲️ Smart Controls</h4>
-        <p>Intelligent timer controls with customizable settings</p>
+
+      <!-- Smart Controls -->
+      <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 4px solid #E74C3C;">
+        <h4 style="color: #2E86C1; margin: 0 0 15px 0; display: flex; align-items: center;">
+          <span style="font-size: 24px; margin-right: 10px;">⚡</span> Smart Controls
+        </h4>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          <li style="margin-bottom: 8px;">⏲️ Timer Controls</li>
+          <li style="margin-bottom: 8px;">🔄 Auto Restart</li>
+          <li style="margin-bottom: 8px;">📱 WiFi Management</li>
+        </ul>
       </div>
-      <div style="background-color: white; padding: 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-        <h4 style="color: #2E86C1; margin: 0 0 10px 0;">🔍 Diagnostics</h4>
-        <p>Comprehensive error detection and system monitoring</p>
+
+      <!-- Monitoring -->
+      <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 4px solid #2ECC71;">
+        <h4 style="color: #2E86C1; margin: 0 0 15px 0; display: flex; align-items: center;">
+          <span style="font-size: 24px; margin-right: 10px;">📊</span> Monitoring
+        </h4>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          <li style="margin-bottom: 8px;">🔍 Real-time Diagnostics</li>
+          <li style="margin-bottom: 8px;">💾 Data Logging</li>
+          <li style="margin-bottom: 8px;">📈 Performance Tracking</li>
+        </ul>
       </div>
-      <div style="background-color: white; padding: 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-        <h4 style="color: #2E86C1; margin: 0 0 10px 0;">📱 Smart Setup</h4>
-        <p>WiFi management with mobile device configuration</p>
+
+      <!-- Hardware -->
+      <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 4px solid #9B59B6;">
+        <h4 style="color: #2E86C1; margin: 0 0 15px 0; display: flex; align-items: center;">
+          <span style="font-size: 24px; margin-right: 10px;">🔧</span> Hardware
+        </h4>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          <li style="margin-bottom: 8px;">💻 Dual Core ESP32</li>
+          <li style="margin-bottom: 8px;">🎛️ OLED Display</li>
+          <li style="margin-bottom: 8px;">🔌 Multiple Sensors</li>
+        </ul>
       </div>
     </div>
   </div>
@@ -79,7 +111,7 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
     </td>
     <td align="center" style="padding: 10px;">
       <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x2.jpg" alt="Controller View 2" style="max-width: 300px; height: auto;">
-      <p style="margin-top: 5px; font-size: 0.9em;">Side View 2</p>
+      <p style="margin-top: 5px; font-size: 0.9em;">Front View 2</p>
     </td>
     <td align="center" style="padding: 10px;">
       <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x3.jpg" alt="Controller View 3" style="max-width: 300px; height: auto;">
