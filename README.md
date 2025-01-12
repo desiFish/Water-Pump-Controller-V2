@@ -170,26 +170,26 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 ## ⭐ Features
 
 ### System Architecture
-- **Dual Core Processing**
-  - Core 1: Handles user interface and display updates
-  - Core 2: Dedicated to real-time sensor monitoring and safety checks
-- **Memory Management**
-  - Configurable sensor enables/disables to optimize memory usage
-  - Persistent storage using Preferences Library for all settings
+- **🧠 Dual Core Processing**
+  - 💻 Core 1: Handles user interface and display updates
+  - 🔄 Core 2: Dedicated to real-time sensor monitoring and safety checks
+- **💾 Memory Management**
+  - ⚙️ Configurable sensor enables/disables to optimize memory usage
+  - 📦 Persistent storage using Preferences Library for all settings
 
 ### Protection Systems
-- **Pump Protection**
-  - Dry run detection and automatic shutdown
-  - Current-based overload protection
+- **💧 Pump Protection**
+  - 🚰 Dry run detection and automatic shutdown
+  - ⚠️ Current-based overload protection
   - Tested with 240V 1HP water pump
   - Real-time current and power monitoring
-- **Safety Features**
-  - Automatic shutdown on abnormal conditions
-  - Configurable threshold limits for all parameters
-  - Emergency stop functionality
+- **🔒 Safety Features**
+  - 🚨 Automatic shutdown on abnormal conditions
+  - 🎚️ Configurable threshold limits for all parameters
+  - 🛑 Emergency stop functionality
 
 ### Smart Controls
-- **One-Button Interface**
+- **🔘 One-Button Interface**
   - Short press: Navigate through menus
   - Long press: Select/Confirm options
   - LED feedback for button actions
@@ -239,10 +239,10 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 
 ### Overview
 This project offers two methods for logging pump data to Google Sheets:
-1. Using PythonAnywhere as middleware (Recommended)
-2. Direct Google Sheets integration (Advanced)
+1. Using PythonAnywhere as middleware (Recommended, Advanced)
+2. Direct Google Sheets integration (Comparatively Simpler, Not Recommended)
 
-### Method 1: Using PythonAnywhere (Recommended)
+### Method 1: Using PythonAnywhere (Recommended, Advanced)
 #### Setup Process
 1. **Google Cloud Setup**
    - Follow [this guide](https://randomnerdtutorials.com/esp32-datalogging-google-sheets/) up to step 2
@@ -261,7 +261,7 @@ This project offers two methods for logging pump data to Google Sheets:
    - Tracks system performance
    - Stores historical data
 
-### Method 2: Direct Integration (Advanced)
+### Method 2: Direct Integration (Comparatively Simpler, Not Recommended)
 #### Important Notes
 - Located in `/resources` folder
 - Requires different partition scheme
@@ -366,10 +366,10 @@ The controller relies on three primary sensors for optimal operation:
 </div>
 
 <div align="center" style="margin-top: 40px; padding: 20px; background-color: #F8F9F9; border-radius: 10px;">
-  <p>Made with ❤️ for the IoT Community</p>
+  <p>🔧 Made with ❤️ for the IoT Community 🌐</p>
   <p>
-    <a href="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/issues">Report Bug</a> ·
-    <a href="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/issues">Request Feature</a>
+    <a href="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/issues">🐛 Report Bug</a> ·
+    <a href="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/issues">✨ Request Feature</a>
   </p>
 </div>
 

@@ -11,9 +11,10 @@ Hardware:
 
 NOT USING CURRENTLY--> ZMPT101B Voltage Sensor
 
-!!!!!!!!!!!!!!!! I AM NOT CURRENTLY WORKING ON THIS VERSION OF CODE !!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!! THIS VERSION WILL NOT BE UPDATED !!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!! SO THIS CODE MAY HAVE BUGS OR ISSUES !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!! OR MAY MISS OUT LATEST FEATURES !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+BUT REST ASSURED THIS CODE WORKS FINE AND IS STABLE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 */
 
 // For basic ESP32 stuff like wifi, OTA Update and Wifi Manager Server
