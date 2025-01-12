@@ -264,47 +264,50 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 
 ## 📊 Data Logging System
 
-### Overview
+<div align="center">
+<img src="https://img.shields.io/badge/🌐_Cloud_Logging-Active-success?style=for-the-badge" alt="Cloud Logging"/>
+</div>
+
+### 📡 Overview
 This project offers two methods for logging pump data to Google Sheets:
-1. Using PythonAnywhere as middleware (Recommended, Advanced)
-2. Direct Google Sheets integration (Comparatively Simpler, Not Recommended)
+1. 🌟 Using PythonAnywhere as middleware (Recommended, Advanced)
+2. 🔗 Direct Google Sheets integration (Comparatively Simpler, Not Recommended)
 
-### Method 1: Using PythonAnywhere (Recommended, Advanced)
-#### Setup Process
-1. **Google Cloud Setup**
+### Method 1: Using PythonAnywhere 🚀
+#### 🔧 Setup Process
+1. **🌐 Google Cloud Setup**
    - Follow [this guide](https://randomnerdtutorials.com/esp32-datalogging-google-sheets/) up to step 2
-   - Obtain necessary Google Cloud credentials
-   - Set up your Google Sheet for data reception
+   - 🔑 Obtain necessary Google Cloud credentials
+   - 📊 Set up your Google Sheet for data reception
 
-2. **PythonAnywhere Configuration**
-   - Deploy provided Flask code to PythonAnywhere
-   - Code available in `/resources` folder
-   - Handles JSON data from ESP32
-   - Manages Google Sheets communication
+2. **⚙️ PythonAnywhere Configuration**
+   - 🔄 Deploy provided Flask code to PythonAnywhere
+   - 📂 Code available in `/resources` folder
+   - 📡 Handles JSON data from ESP32
+   - 📝 Manages Google Sheets communication
 
-3. **Data Collection**
-   - Records fill time duration
-   - Logs sensor parameters
-   - Tracks system performance
-   - Stores historical data
+3. **📊 Data Collection**
+   - ⏱️ Records fill time duration
+   - 📈 Logs sensor parameters
+   - 📊 Tracks system performance
+   - 💾 Stores historical data
 
-### Method 2: Direct Integration (Comparatively Simpler, Not Recommended)
-#### Important Notes
-- Located in `/resources` folder
-- Requires different partition scheme
-- Higher memory usage
-- Check header comments for:
-  - Board selection details
-  - Partition scheme requirements
-  - Setup instructions
+### Method 2: Direct Integration ⚡
+#### ℹ️ Important Notes
+- 📂 Located in `/resources` folder
+- 💻 Requires different partition scheme
+- 🔧 Higher memory usage
+- 📋 Check header comments for configuration
 
-### Logged Parameters
-- Tank fill duration
-- Water level readings
-- Current consumption
-- System status
-- Error conditions
-- Performance metrics
+### 📈 Logged Parameters
+<table>
+<tr>
+<td align="center">⏱️ Duration</td>
+<td align="center">💧 Water Level</td>
+<td align="center">⚡ Power Usage</td>
+<td align="center">🔄 System Status</td>
+</tr>
+</table>
 
 > 💡 **Tip:** Choose Method 1 for better memory management and system stability. Use Method 2 only if you need direct integration and have configured the appropriate partition scheme.
 
@@ -351,45 +354,106 @@ This project offers two methods for logging pump data to Google Sheets:
 
 ## ⚙️ Calibration & Setup
 
-### Core Sensors
-The controller relies on three primary sensors for optimal operation:
-- Current Sensor (SCT013)
-- Float Sensor
-- Distance Sensor (Ultrasonic)
+<div align="center">
+<img src="https://img.shields.io/badge/🔧_Setup-Required-yellow?style=for-the-badge" alt="Setup Required"/>
+</div>
 
-### Current Sensor Calibration
-1. **Initial Setup**
-   - Default calibration value: 27 (adjustable through program)
-   - Reference: Use your home's electricity meter readings
-   - Target: Match controller readings with meter readings
+### 📡 Core Sensors
+<table>
+<tr>
+<td align="center">
+<h4>⚡ Current Sensor</h4>
+SCT013
+</td>
+<td align="center">
+<h4>💧 Float Sensor</h4>
+Water Level
+</td>
+<td align="center">
+<h4>📏 Distance Sensor</h4>
+Ultrasonic
+</td>
+</tr>
+</table>
 
-2. **Expected Readings** (1HP Pump)
-   - Voltage Range: 220-240V AC
-   - Current Draw: 2.6A - 3.3A
-   - Note: Readings may vary based on your pump specifications
+### 🔌 Current Sensor Calibration
 
-3. **Calibration Process**
-   ```
-   1. Run pump under normal conditions
-   2. Compare controller readings with electricity meter
-   3. Adjust calibration value until readings match
-   4. Test at different times to ensure consistency
-   ```
+#### 1️⃣ Initial Setup
+```
+📊 Default Value: 27
+🔧 Adjustable via program
+📈 Reference: Home electricity meter
+🎯 Goal: Match readings
+```
 
-### Important Notes
-- **Voltage Protection:** External voltage protection is recommended
-- **Current-Voltage Relationship:**
-  - Current increases when voltage drops
-  - Current decreases when voltage rises
-  - This relationship helps detect power quality issues
+#### 2️⃣ Expected Readings (1HP Pump)
+<table>
+<tr>
+<td align="center">⚡ Voltage</td>
+<td align="center">📊 Current</td>
+</tr>
+<tr>
+<td align="center">220-240V AC</td>
+<td align="center">2.6A - 3.3A</td>
+</tr>
+</table>
 
-### Safety Recommendations
-1. Always have external circuit protection
-2. Monitor initial readings carefully
-3. Document your calibration values
-4. Perform periodic calibration checks
+#### 3️⃣ Calibration Steps
+```
+1. 🏃 Run pump normally
+2. 📊 Compare readings
+3. 🔧 Adjust values
+4. ✅ Verify results
+```
 
-> 💡 **Tip:** The system can operate reliably without voltage monitoring, as current measurements provide indirect voltage information through their inverse relationship.
+### ⚡ Important Notes
+- **🔌 Voltage Protection:** External voltage protection is recommended
+- **📊 Current-Voltage Relationship:**
+  - 📈 Current increases when voltage drops
+  - 📉 Current decreases when voltage rises
+  - 🔍 This relationship helps detect power quality issues
+
+### 🛡️ Safety Recommendations
+<table>
+<tr>
+<td align="center">
+<img src="https://img.shields.io/badge/🔒_Protection-Required-red?style=for-the-badge" alt="Protection Required"/>
+</td>
+<td align="center">
+<img src="https://img.shields.io/badge/📊_Monitoring-Active-blue?style=for-the-badge" alt="Monitoring Active"/>
+</td>
+</tr>
+</table>
+
+1. 🛡️ Always have external circuit protection
+2. 📊 Monitor initial readings carefully
+3. 📝 Document your calibration values
+4. 🔄 Perform periodic calibration checks
+
+> 💡 **Pro Tip:** The relationship between current and voltage provides indirect power quality monitoring even without dedicated voltage sensors.
+
+<table>
+<tr>
+<td align="center">
+<h4>⚠️ Safety First</h4>
+- External Protection<br>
+- Regular Checks<br>
+- Documentation
+</td>
+<td align="center">
+<h4>📊 Monitoring</h4>
+- Track Readings<br>
+- Record Changes<br>
+- Verify Values
+</td>
+<td align="center">
+<h4>🔧 Maintenance</h4>
+- Regular Calibration<br>
+- Keep Records<br>
+- Update Settings
+</td>
+</tr>
+</table>
 </div>
 
 <div align="center" style="margin-top: 40px; padding: 20px; background-color: #F8F9F9; border-radius: 10px;">
