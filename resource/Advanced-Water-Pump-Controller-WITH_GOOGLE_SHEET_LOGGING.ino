@@ -1,5 +1,19 @@
 /*
-Copyright Aniket Patra. Give proper attributes. Others (one or more) parties have their own copyrights of their work. Rest License Details over Github.
+Advanced-Water-Pump-Controller-WITH_GOOGLE_SHEET_LOGGING.ino
+Copyright (C) 2024 desiFish
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 Hardware:
 1. DOIT ESP32 DEVKIT V1 (Usage Config: Board: ESP32 Dev Module, Partition Scheme: Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS))
