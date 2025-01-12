@@ -15,29 +15,30 @@
     <img src="https://img.shields.io/badge/Arduino-Compatible-green?style=flat-square" alt="Arduino Compatible">
   </p>
   
-  <div style="background-color: #EBF5FB; padding: 15px; border-radius: 8px; margin: 20px 0;">
-    <h3>🛠️ Key Features</h3>
-    <ul style="list-style: none;">
-      <li>✅ Dry Running Protection</li>
-      <li>⏲️ Smart Timer Controls</li>
-      <li>🔍 Error Detection</li>
-      <li>📊 Real-time Diagnostics</li>
-      <li>📱 WiFi Management</li>
-    </ul>
+  <div style="background-color: #EBF5FB; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h3 style="color: #2874A6; margin-bottom: 15px;">🛠️ Key Features</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+      <div style="background-color: white; padding: 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h4 style="color: #2E86C1; margin: 0 0 10px 0;">✅ Protection</h4>
+        <p>Advanced dry running protection with real-time monitoring</p>
+      </div>
+      <div style="background-color: white; padding: 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h4 style="color: #2E86C1; margin: 0 0 10px 0;">⏲️ Smart Controls</h4>
+        <p>Intelligent timer controls with customizable settings</p>
+      </div>
+      <div style="background-color: white; padding: 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h4 style="color: #2E86C1; margin: 0 0 10px 0;">🔍 Diagnostics</h4>
+        <p>Comprehensive error detection and system monitoring</p>
+      </div>
+      <div style="background-color: white; padding: 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h4 style="color: #2E86C1; margin: 0 0 10px 0;">📱 Smart Setup</h4>
+        <p>WiFi management with mobile device configuration</p>
+      </div>
+    </div>
   </div>
 </div>
 
 <div style="background: linear-gradient(to right, #E8F8F5, #D1F2EB); padding: 20px; border-radius: 10px;">
-
-## 📑 INDEX
-1. [Hardware](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#hardware)
-2. [UPCOMING FEATURES](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#upcoming-features)
-3. [PICTURES](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#pictures-schematics-and-other-stuff)
-4. [FEATURES](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#some-of-the-features)
-5. [CALIBRATION](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#calibration)
-6. [LOGGING FUNCTION](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#the-logging-functionality)
-7. [ISSUES](https://github.com/KamadoTanjiro-beep/ESP32-Advanced-Water-Pump-Controller?tab=readme-ov-file#issues)
-</div>
 
 <div style="background-color: #F4ECF7; padding: 20px; border-radius: 10px; margin-top: 20px;">
 
@@ -66,23 +67,44 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 <div style="background-color: #FEF9E7; padding: 20px; border-radius: 10px; margin-top: 20px;">
 
 ## 📸 Pictures & Schematics
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/SCH_Schematic1.png" alt="Schematics" width="400" height="300">
-
-<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x1.jpg" alt="pictures-of-controller" width="400" height="300">
-
-<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x2.jpg" alt="pictures-of-controller" width="400" height="300">
-
-<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x3.jpg" alt="pictures-of-controller" width="400" height="500">
-
-<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x4.jpg" alt="pictures-of-controller" width="400" height="300">
-
-<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x5.jpg" alt="pictures-of-controller" width="500" height="300">
-
-<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x6.jpg" alt="pictures-of-controller" width="400" height="300">
-
-<img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x7.jpg" alt="pictures-of-controller" width="400" height="500">
-</div>
+<table style="width:100%; border-collapse: collapse; margin: 20px 0;">
+  <tr>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/SCH_Schematic1.png" alt="Schematics" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">Circuit Schematic</p>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x1.jpg" alt="Controller View 1" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">Front View</p>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x2.jpg" alt="Controller View 2" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">Side View</p>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x3.jpg" alt="Controller View 3" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">Internal View</p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x4.jpg" alt="Controller View 4" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">Display View</p>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x5.jpg" alt="Controller View 5" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">Setup View</p>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x6.jpg" alt="Controller View 6" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">Connection View</p>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x7.jpg" alt="Controller View 7" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">Complete Setup</p>
+    </td>
+  </tr>
+</table>
 </div>
 
 <div style="background-color: #EBF5FB; padding: 20px; border-radius: 10px; margin-top: 20px;">
