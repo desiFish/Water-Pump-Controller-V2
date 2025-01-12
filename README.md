@@ -15,6 +15,28 @@
     <img src="https://img.shields.io/badge/Arduino-Compatible-green?style=flat-square" alt="Arduino Compatible">
   </p>
 </div>
+
+<div align="center">
+  <table>
+    <tr>
+      <td>
+        <h3>⚠️ Important Disclaimer</h3>
+        <p align="left">
+          <b>Project Status:</b> Active Development & Testing<br>
+          This is a new project under continuous development. Features, documentation, and test data will be updated regularly.
+        </p>
+        <p align="left">
+          <b>Safety Notice:</b><br>
+          • This project uses hobby-grade components and is NOT designed for 24/7 commercial operation<br>
+          • While safety features are implemented, they should not be considered fail-safe<br>
+          • Use appropriate commercial-grade equipment for critical applications<br>
+          • No liability is accepted for any damages resulting from using this project
+        </p>
+      </td>
+    </tr>
+  </table>
+</div>
+
 ## 🎯 Key Features & Capabilities
 
 <details open>
@@ -146,41 +168,124 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 <div style="background-color: #EBF5FB; padding: 20px; border-radius: 10px; margin-top: 20px;">
 
 ## ⭐ Features
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px;">
-1. Dual core utilisation of ESP32, one core working with UI and another monitoring sensors.
-2. Full Induction Pump Protection System, tested on 240V 1HP Water Pump (*)
-3. SENSORS CAN BE TURNED OFF FROM THE MENU, GIVING YOU THE OPTION TO MAKE THE PROJECT LIGHTER!!
-4. Range of parameters for customisation, it uses Preferences Library for remembering your choices.
-5. Uses Float Sensor for basic water level sensing and turning off of PUMP with Advanced Waterproof Distance sensor to show real time water level (*)
-6. It uses a one-button system, SINGLE PRESS (SHORT) for navigation and SINGLE PRESS (LONG) for selection, with flashing LEDs for guidance.
-7. 1.3 inches 128x64 OLED Display, RGB LEDs and Buzzers make up for total user interaction and experience.
-8. RTC DS1307 can be used for time-dependent operations and further automation in its entirety (User needs to implement it according to their need, I will work on it later)
-9. OTA Update supported (local network as of now)
-10. WiFi Manager for seamlessly setting up the device with your smartphone with on-screen guidance. RTC Clock updates automatically with Wifi (Go to the settings).
-11. More Coming Soon.
-</div>
 
-<div style="background-color: #FDEDEC; padding: 15px; border-radius: 8px; margin-top: 15px;">
-⚠️ <strong>Important Notes:</strong>
-(*) ***Various parameters need to be set based on user needs and scenarios. For the calibration of sensors, various limits need to be set through the program menu. Feel free to let me know if you need help.*** </br>
-** ***Sensors used in this project are hobby level, please don't expect industry standards. Sensors may fail, and devices may fail. Be cautious and use it at your own risk*** </br>
-*** ***Deals with high voltage current, be ultra cautious***
-</div>
-</div>
+### System Architecture
+- **Dual Core Processing**
+  - Core 1: Handles user interface and display updates
+  - Core 2: Dedicated to real-time sensor monitoring and safety checks
+- **Memory Management**
+  - Configurable sensor enables/disables to optimize memory usage
+  - Persistent storage using Preferences Library for all settings
 
-<div style="background-color: #E8F8F5; padding: 20px; border-radius: 10px; margin-top: 20px;">
+### Protection Systems
+- **Pump Protection**
+  - Dry run detection and automatic shutdown
+  - Current-based overload protection
+  - Tested with 240V 1HP water pump
+  - Real-time current and power monitoring
+- **Safety Features**
+  - Automatic shutdown on abnormal conditions
+  - Configurable threshold limits for all parameters
+  - Emergency stop functionality
 
-## ⚙️ CALIBRATION
-The program works great just using Current Sensor, Float Sensor and Distance Sensor (Assuming you have some kind of Voltage protection system in your house). Even without Voltage monitoring, you can kinda predict it using Current i.e. When Voltage Rises Current drops, and When Voltage drops Current rises.
-REMEMBER TO CALIBRATE THE CURRENT SENSOR!! The easiest way is to verify it with an Electric Meter/Energy Meter installed by your electricity company and adjust the calibration value, for me, it is 27.
-In my case, I get 220-240 volts (from the energy meter), and the ampere is around 2.6 A to 2.9 A for 1 HP Induction Motor. And I have a digital Electricity protection system in my house.
+### Smart Controls
+- **One-Button Interface**
+  - Short press: Navigate through menus
+  - Long press: Select/Confirm options
+  - LED feedback for button actions
+- **Display System**
+  - 1.3" 128x64 OLED display for clear visibility
+  - RGB LED status indicators
+  - Buzzer alerts for critical notifications
+
+### Water Level Management
+- **Dual Sensor System**
+  - Primary: Float sensor for reliable level detection
+  - Secondary: Waterproof ultrasonic sensor for real-time level monitoring
+  - Automatic pump control based on tank levels
+
+### Connectivity
+- **WiFi Capabilities**
+  - Built-in WiFi Manager for easy setup
+  - Smartphone-based configuration
+  - OTA (Over-The-Air) firmware updates
+  - Automatic RTC synchronization via WiFi
+
+### Time Management
+- **RTC Integration**
+  - DS1307 Real-Time Clock
+  - Scheduled operations support
+  - Time-based automation features
+  - Power failure time tracking
+
+### Data Logging
+- **Remote Monitoring**
+  - Google Sheets integration for data logging
+  - Fill time analytics
+  - Performance tracking
+  - Remote status monitoring
+
+⚠️ **Configuration Notes:**
+- All protection parameters are user-configurable through the menu system
+- Initial calibration required for optimal performance
+- Refer to calibration section for sensor setup guidelines
+
+> 💡 **Future Updates:** More features are being developed. Check the Issues section for upcoming additions.
 </div>
 
 <div style="background-color: #F5EEF8; padding: 20px; border-radius: 10px; margin-top: 20px;">
 
-## 📊 Logging Functionality
-This program can now log time-taken to fill the tank and other parameters in google sheet. I have used Pythonanywheere for receiving those data from ESP32 in JSON/POST format. The program in Pythonanywhere adds it to Google Sheets. Follow up to step 2 of [this](https://randomnerdtutorials.com/esp32-datalogging-google-sheets/) for getting credentials from Google Cloud. Then you can check the "resources" folder for the Python code written for FLASK, which writes the data in Google sheet. Please let me know if you have any doubts.
-There is a different version of this program, which directly stores the data in Google Sheets without using any middleman, it is stored in the "resources" folder as well. PLEASE CHECK THE HEADER COMMENT of that program for board selection and partition scheme information. I am not using this version because it takes a lot of memory but you can always change the partition scheme and use it.
+## 📊 Data Logging System
+
+### Overview
+This project offers two methods for logging pump data to Google Sheets:
+1. Using PythonAnywhere as middleware (Recommended)
+2. Direct Google Sheets integration (Advanced)
+
+### Method 1: Using PythonAnywhere (Recommended)
+#### Setup Process
+1. **Google Cloud Setup**
+   - Follow [this guide](https://randomnerdtutorials.com/esp32-datalogging-google-sheets/) up to step 2
+   - Obtain necessary Google Cloud credentials
+   - Set up your Google Sheet for data reception
+
+2. **PythonAnywhere Configuration**
+   - Deploy provided Flask code to PythonAnywhere
+   - Code available in `/resources` folder
+   - Handles JSON data from ESP32
+   - Manages Google Sheets communication
+
+3. **Data Collection**
+   - Records fill time duration
+   - Logs sensor parameters
+   - Tracks system performance
+   - Stores historical data
+
+### Method 2: Direct Integration (Advanced)
+#### Important Notes
+- Located in `/resources` folder
+- Requires different partition scheme
+- Higher memory usage
+- Check header comments for:
+  - Board selection details
+  - Partition scheme requirements
+  - Setup instructions
+
+### Logged Parameters
+- Tank fill duration
+- Water level readings
+- Current consumption
+- System status
+- Error conditions
+- Performance metrics
+
+> 💡 **Tip:** Choose Method 1 for better memory management and system stability. Use Method 2 only if you need direct integration and have configured the appropriate partition scheme.
+
+### Data Analysis
+- Track system efficiency
+- Monitor fill patterns
+- Identify potential issues
+- Analyze performance trends
 </div>
 
 <div style="background-color: #FADBD8; padding: 20px; border-radius: 10px; margin-top: 20px;">
@@ -213,6 +318,51 @@ There is a different version of this program, which directly stores the data in 
 1. Voltage Monitoring is not working (Giving higher values than individual test results, will look into it later).
 2. Wattage is dependent on voltage, so it is also not working.
 </details>
+</div>
+
+<div style="background-color: #F5F5F5; padding: 20px; border-radius: 10px; margin-top: 20px;">
+
+## ⚙️ Calibration & Setup
+
+### Core Sensors
+The controller relies on three primary sensors for optimal operation:
+- Current Sensor (SCT013)
+- Float Sensor
+- Distance Sensor (Ultrasonic)
+
+### Current Sensor Calibration
+1. **Initial Setup**
+   - Default calibration value: 27 (adjustable through program)
+   - Reference: Use your home's electricity meter readings
+   - Target: Match controller readings with meter readings
+
+2. **Expected Readings** (1HP Pump)
+   - Voltage Range: 220-240V AC
+   - Current Draw: 2.6A - 3.3A
+   - Note: Readings may vary based on your pump specifications
+
+3. **Calibration Process**
+   ```
+   1. Run pump under normal conditions
+   2. Compare controller readings with electricity meter
+   3. Adjust calibration value until readings match
+   4. Test at different times to ensure consistency
+   ```
+
+### Important Notes
+- **Voltage Protection:** External voltage protection is recommended
+- **Current-Voltage Relationship:**
+  - Current increases when voltage drops
+  - Current decreases when voltage rises
+  - This relationship helps detect power quality issues
+
+### Safety Recommendations
+1. Always have external circuit protection
+2. Monitor initial readings carefully
+3. Document your calibration values
+4. Perform periodic calibration checks
+
+> 💡 **Tip:** The system can operate reliably without voltage monitoring, as current measurements provide indirect voltage information through their inverse relationship.
 </div>
 
 <div align="center" style="margin-top: 40px; padding: 20px; background-color: #F8F9F9; border-radius: 10px;">

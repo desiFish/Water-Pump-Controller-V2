@@ -10,6 +10,10 @@ Hardware:
 6. Float Sensor (Any)
 
 NOT USING CURRENTLY--> ZMPT101B Voltage Sensor
+
+!!!!!!!!!!!!!!!! I AM NOT CURRENTLY WORKING ON THIS VERSION OF CODE !!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!! SO THIS CODE MAY HAVE BUGS OR ISSUES !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!! OR MAY MISS OUT LATEST FEATURES !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 */
 
 // For basic ESP32 stuff like wifi, OTA Update and Wifi Manager Server

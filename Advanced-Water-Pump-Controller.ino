@@ -2,7 +2,7 @@
 Copyright Aniket Patra. Give proper attributes. Others (one or more) parties have their own copyrights of their work. Rest License Details over Github.
 
 Hardware:
-1. DOIT ESP32 DEVKIT V1 (Usage Config: Board: ESP32 Dev Module, Partition Scheme: Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS))
+1. DOIT ESP32 DEVKIT V1
 2. 128x64 OLED Display
 3. DS1307 RTC
 4. SCT Current sensor
