@@ -14,7 +14,7 @@
     <img src="https://img.shields.io/badge/ESP32-Ready-blue?style=flat-square" alt="ESP32 Ready">
     <img src="https://img.shields.io/badge/Arduino-Compatible-green?style=flat-square" alt="Arduino Compatible">
   </p>
-  
+</div>
 ## 🎯 Key Features & Capabilities
 
 <details open>
