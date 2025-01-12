@@ -92,13 +92,13 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
       <p style="margin-top: 5px; font-size: 0.9em;">Full View</p>
     </td>
     <td align="center" style="padding: 10px;">
-      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x5.jpg" alt="Controller View 5" style="max-width: 300px; height: auto;">
-      <p style="margin-top: 5px; font-size: 0.9em;">Ultra Sonic USB</p>
-    </td>
-    <td align="center" style="padding: 10px;">
       <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x6.jpg" alt="Controller View 6" style="max-width: 300px; height: auto;">
       <p style="margin-top: 5px; font-size: 0.9em;">Ultra Sonic</p>
     </td>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x5.jpg" alt="Controller View 5" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">Ultra Sonic USB</p>
+    </td>    
     <td align="center" style="padding: 10px;">
       <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x7.jpg" alt="Controller View 7" style="max-width: 300px; height: auto;">
       <p style="margin-top: 5px; font-size: 0.9em;">Complete Setup</p>
