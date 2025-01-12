@@ -79,25 +79,25 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
     </td>
     <td align="center" style="padding: 10px;">
       <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x2.jpg" alt="Controller View 2" style="max-width: 300px; height: auto;">
-      <p style="margin-top: 5px; font-size: 0.9em;">Side View</p>
+      <p style="margin-top: 5px; font-size: 0.9em;">Side View 2</p>
     </td>
     <td align="center" style="padding: 10px;">
       <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x3.jpg" alt="Controller View 3" style="max-width: 300px; height: auto;">
-      <p style="margin-top: 5px; font-size: 0.9em;">Internal View</p>
+      <p style="margin-top: 5px; font-size: 0.9em;">Front View 3</p>
     </td>
   </tr>
   <tr>
     <td align="center" style="padding: 10px;">
       <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x4.jpg" alt="Controller View 4" style="max-width: 300px; height: auto;">
-      <p style="margin-top: 5px; font-size: 0.9em;">Display View</p>
+      <p style="margin-top: 5px; font-size: 0.9em;">Full View</p>
     </td>
     <td align="center" style="padding: 10px;">
       <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x5.jpg" alt="Controller View 5" style="max-width: 300px; height: auto;">
-      <p style="margin-top: 5px; font-size: 0.9em;">Setup View</p>
+      <p style="margin-top: 5px; font-size: 0.9em;">Ultra Sonic USB</p>
     </td>
     <td align="center" style="padding: 10px;">
       <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x6.jpg" alt="Controller View 6" style="max-width: 300px; height: auto;">
-      <p style="margin-top: 5px; font-size: 0.9em;">Connection View</p>
+      <p style="margin-top: 5px; font-size: 0.9em;">Ultra Sonic</p>
     </td>
     <td align="center" style="padding: 10px;">
       <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x7.jpg" alt="Controller View 7" style="max-width: 300px; height: auto;">
