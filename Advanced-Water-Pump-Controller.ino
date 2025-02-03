@@ -387,7 +387,12 @@ void blinkOrange(byte, byte, int = 50);
 void autoTimeUpdate(bool = true);
 void pumpRunSequence(bool = false);
 
-// runs only once during startup
+/**
+ * @brief Initializes the pump controller system
+ *
+ * This function sets up all necessary hardware components, loads settings,
+ * and prepares the system for operation.
+ */
 void setup(void)
 {
   Serial.begin(115200);
@@ -662,9 +667,14 @@ void setup(void)
       0);          // pin task to core 0
 }
 
-/*loop2() runs on Core 0, it is meant for continuously running and updating various
-vital sensor data and taking actions based on that. Even if user is operating Menu, it will turn off the pump in background
-*/
+/**
+ * @brief Secondary core loop for sensor monitoring and safety checks
+ *
+ * @param pvParameters Pointer to task parameters (unused in this implementation)
+ *
+ * This function runs continuously on Core 0, handling real-time sensor monitoring
+ * and safety-critical operations.
+ */
 void loop2(void *pvParameters)
 {
   for (;;)
@@ -733,7 +743,12 @@ void loop2(void *pvParameters)
   }
 }
 
-// loop() runs on Core 1, loop performs User Interaction and User Interface
+/**
+ * @brief Main loop for user interface and non-critical operations
+ *
+ * This function runs on Core 1, managing the user interface, display updates,
+ * and other non-critical tasks.
+ */
 void loop(void)
 {
   // no OTA when pump is running
@@ -816,7 +831,7 @@ void loop(void)
     while (digitalRead(BUTTON) == 1)
     {
       count++;
-      if (count >= 1 && count <= 6)
+      if (count >= 1 && count <= 30)
       {
         blinkOrange(1, 20, 50);
       }
@@ -832,7 +847,7 @@ void loop(void)
     leds[0] = CRGB::Black;
     FastLED.show();
 
-    if (count >= 1 && count <= 6)
+    if (count >= 1 && count <= 30)
     {
       leds[0] = CRGB::Yellow;
       FastLED.show();
@@ -843,7 +858,14 @@ void loop(void)
   }
 }
 
-// turns the pump on with safety checks
+/**
+ * @brief Initiates or stops the pump operation with safety checks
+ *
+ * @param flag If true, initiates auto-run mode
+ *
+ * This function handles the pump start/stop sequence, including user confirmation
+ * and safety checks before operation.
+ */
 void pumpRunSequence(bool flag)
 {
   delay(100);
@@ -885,7 +907,7 @@ void pumpRunSequence(bool flag)
         while (digitalRead(BUTTON) == 1)
         {
           count++;
-          if (count >= 1 && count <= 6)
+          if (count >= 1 && count <= 8)
           {
             blinkOrange(1, 20);
           }
@@ -901,7 +923,7 @@ void pumpRunSequence(bool flag)
         leds[0] = CRGB::Black;
         FastLED.show();
 
-        if (count >= 1 && count <= 6)
+        if (count >= 1 && count <= 8)
         {
           option++;
           if (option > 2)
@@ -968,7 +990,7 @@ void pumpRunSequence(bool flag)
         while (digitalRead(BUTTON) == 1)
         {
           count++;
-          if (count >= 1 && count <= 6)
+          if (count >= 1 && count <= 8)
           {
             blinkOrange(1, 20);
           }
@@ -990,7 +1012,7 @@ void pumpRunSequence(bool flag)
         leds[0] = CRGB::Black;
         FastLED.show();
 
-        if (count >= 1 && count <= 6)
+        if (count >= 1 && count <= 8)
         {
           option++;
           if (option > 2)
@@ -1006,7 +1028,7 @@ void pumpRunSequence(bool flag)
             if (errorCode == 0 || errorCode == 1) // check if there is any error
             {
               TURN_ON_RELAY;
-              delay(500);
+              delay(300);
               if (useWifi)
               {
                 startTime = onlyTime;
@@ -1035,13 +1057,13 @@ void pumpRunSequence(bool flag)
   }
 }
 
-/*live monitoring of various sensor details, updating global variables, and returning appropriate error code.
-\n no err: err = 0
-\n tank not full: err = 1
-\n tank full: err = 2
-\n high ampere: err = 3
-\n Low Ampere: err = 4
-*/
+/**
+ * @brief Monitors system parameters and returns error status
+ *
+ * @return byte Error code (0: No error, 1: Tank not full, 2: Tank full, 3: High ampere, 4: Low ampere)
+ *
+ * This function checks various sensor readings and system states to ensure safe operation.
+ */
 byte intelligentMonitoring()
 {
   byte err = 0;
@@ -1161,14 +1183,22 @@ void runPumpAuto()
   pumpRunSequence(true);
 }
 
-// reads live values from ampere sensor
+/**
+ * @brief Reads current value from the ampere sensor
+ *
+ * @return double Current reading in amperes
+ */
 double readAmpere()
 {
   double Irms = emon1.calcIrms(1480); // Calculate Irms only
   return Irms;
 }
 
-// reads live values from Ultrasonic sensor
+/**
+ * @brief Reads distance value from the ultrasonic sensor
+ *
+ * @return int Distance reading in centimeters
+ */
 int readUltrasonic()
 {
   static int x;
@@ -1191,7 +1221,11 @@ int readUltrasonic()
   return liveTankLevel;
 }
 
-// reads live values from Float sensor
+/**
+ * @brief Reads the state of the float sensor
+ *
+ * @return bool True if water level is high, false otherwise
+ */
 bool readFloat()
 {
   static bool tempFloatVal;
@@ -1208,7 +1242,68 @@ bool readFloat()
   return floatSensor;
 }
 
-// send data in percent. it prints tank water level in graphical form
+/**
+ * @brief Displays the tank water level graphically
+ *
+ * @param x Water level percentage (0-100)
+ *
+ * This function renders a graphical representation of the tank water level on the OLED display.
+ * It implements a simple smoothing algorithm to minimize fluctuations due to waves.
+ */
+void drawTankLevel(byte x)
+{
+  // static byte holdData = 0;
+  const byte MAX_CHANGE = 3; // Maximum allowed change in percentage per update
+  const byte MIN_CHANGE = 1; // Minimum change required to update display
+
+  // Initialize holdData if it's the first run
+  if (holdData == 0)
+  {
+    holdData = x;
+  }
+
+  // Calculate the difference between new and old values
+  int difference = x - holdData;
+
+  // Update holdData only if the change is within acceptable range
+  if (abs(difference) >= MIN_CHANGE && abs(difference) <= MAX_CHANGE)
+  {
+    holdData = x;
+  }
+  else if (abs(difference) > (MAX_CHANGE))
+  {
+    // If change is too large, move holdData slightly towards the new value
+    holdData += (difference > 0) ? 1 : -1;
+  }
+
+  // Ensure holdData stays within 0-100 range
+  holdData = constrain(holdData, 0, 100);
+
+  // Draw the tank outline
+  display.drawRoundRect(3, 20, 40, 41, 3, 1);
+  display.drawRoundRect(13, 18, 20, 3, 3, 1);
+
+  // Fill the tank based on holdData
+  byte fillHeight = map(holdData, 0, 100, 0, 33);
+  display.fillRect(5, 57, 36, -fillHeight, 1);
+
+  // Display the percentage
+  display.setTextColor(SH110X_BLACK, SH110X_WHITE);
+  if (holdData == 100)
+  {
+    display.fillRect(11, 27, 25, 9, 1);
+    display.setCursor(12, 28);
+  }
+  else
+  {
+    display.fillRect(14, 27, 19, 9, 1);
+    display.setCursor(15, 28);
+  }
+  display.print(String(holdData) + "%");
+  display.setTextColor(SH110X_WHITE);
+}
+
+/*
 void drawTankLevel(byte x)
 {
   if (holdData == 0)
@@ -1252,20 +1347,53 @@ void drawTankLevel(byte x)
   display.print(String(temp) + "%");
   display.setTextColor(SH110X_WHITE);
 }
+*/
 
+/**
+ * @brief Calculates the water level percentage in the tank
+ *
+ * @return byte The calculated water level percentage (0-100)
+ *
+ * This function uses the current ultrasonic sensor reading (liveTankLevel)
+ * and compares it with the calibrated empty (tankLow) and full (tankFull) values
+ * to calculate the current water level percentage in the tank.
+ */
 byte tankLevelPerc()
 {
-  int tempNum = liveTankLevel;
-  tempNum = tankLow - tempNum;
-  tempNum = (tempNum / float(tankLow - tankFull)) * 100;
-  if (tempNum > 100)
-    tempNum = 100;
-  else if (tempNum < 1)
-    tempNum = 0;
-  return tempNum;
+  // Check if calibration values are valid
+  if (tankLow <= tankFull || tankLow == 0 || tankFull == 0)
+  {
+    Serial.println("Error: Invalid tank calibration values");
+    return 0; // Return 0% if calibration is invalid
+  }
+
+  // Ensure liveTankLevel is within valid range
+  int currentLevel = constrain(liveTankLevel, tankFull, tankLow);
+
+  // Calculate percentage
+  float percentage = map(currentLevel, tankLow, tankFull, 0, 100);
+
+  // Round to nearest integer and constrain between 0 and 100
+  int roundedPercentage = round(percentage);
+  roundedPercentage = constrain(roundedPercentage, 0, 100);
+
+  Serial.printf("Tank Level: %d%% (Raw: %d, Low: %d, Full: %d)\n",
+                roundedPercentage, liveTankLevel, tankLow, tankFull);
+
+  return (byte)roundedPercentage;
 }
 
-// Live value printer function
+/**
+ * @brief Displays vital system information on the OLED screen
+ *
+ * This function updates the OLED display with current system status information:
+ * - Pump runtime (if pump is running)
+ * - Float sensor status (if enabled)
+ * - Current sensor readings (if enabled)
+ * - Ultrasonic sensor readings (if enabled)
+ *
+ * The information displayed depends on which sensors are active and the current system state.
+ */
 void vitals()
 {
   if (isPumpRunning)
@@ -1408,6 +1536,16 @@ void menu(void)
   display.clearDisplay();
 }
 
+/**
+ * @brief Blinks the RGB LED in orange color
+ *
+ * @param times Number of times to blink (0 for continuous)
+ * @param brightValue Brightness of the LED (0-255)
+ * @param blinkDuration Duration of each blink in milliseconds (default 50ms)
+ *
+ * This function controls the RGB LED to create a blinking effect in orange color.
+ * It's used for visual feedback in the user interface.
+ */
 void blinkOrange(byte times, byte brightValue, int blinkDuration)
 {
   if (times == 0)
@@ -1433,7 +1571,13 @@ void blinkOrange(byte times, byte brightValue, int blinkDuration)
   }
 }
 
-// container function for safe data limit entry
+/**
+ * @brief Manages the data limit settings menu
+ *
+ * This function provides a user interface for setting various data limits
+ * such as ultrasonic sensor and current sensor thresholds.
+ * It uses a single-button navigation system.
+ */
 void dataLimit()
 {
   byte count = 0, option = 1;
@@ -1507,7 +1651,15 @@ void dataLimit()
   }
 }
 
-// sets values for tankLow, tankFull using live values from sensor
+/**
+ * @brief Configures ultrasonic sensor values
+ *
+ * This function allows the user to set or adjust the ultrasonic sensor values
+ * for tank level measurements. It provides options for using live values or
+ * manually entering values for empty and full tank levels.
+ *
+ * @note This function uses persistent storage to save the configured values.
+ */
 void ultraSonicValues()
 {
   pref.begin("database", false);

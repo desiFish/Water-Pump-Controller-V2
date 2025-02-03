@@ -20,6 +20,21 @@
   <table>
     <tr>
       <td>
+        <h3>ℹ️ Important Information</h3>
+        <p align="left">
+          • This project is an advanced version of the <a href="https://github.com/desiFish/ESP8266-Water-Pump-Controller">ESP8266 Water Pump Controller</a>, offering enhanced features and capabilities.<br>
+          • The tank level display utilizes a sophisticated stability algorithm, which may result in a slight delay in updates to minimize fluctuations and improve accuracy.<br>
+          • This project is under active development. Features, documentation, and performance are continuously being improved and updated.
+        </p>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<div align="center">
+  <table>
+    <tr>
+      <td>
         <h3>⚠️ Important Disclaimer</h3>
         <p align="left">
           <b>Project Status:</b> Active Development & Testing<br>
@@ -320,33 +335,23 @@ This project offers two methods for logging pump data to Google Sheets:
 
 <div style="background-color: #FADBD8; padding: 20px; border-radius: 10px; margin-top: 20px;">
 
-## ⚠️ ISSUES
+## ⚡ What's New
 <details>
-<summary style="cursor: pointer; font-weight: bold;">Known Issues 1.2.0</summary>
-1. Same as 1.1.1-beta
-2. Ultrasonic works as of now (when it is connected), because the water is falling from height and waves are forming, hence accuracy is affected.
-</details>
+<summary style="cursor: pointer; font-weight: bold;">V1.2.1</summary>
 
-<details>
-<summary style="cursor: pointer; font-weight: bold;">Known Issues 1.1.1-beta</summary>
-1. When ultrasonic is not connected, but turned on in settings, the ESP32 restarts in loop. The primary issue is that the Serial Monitor for ultrasonic returns garbage values even when nothing is connected and ESP32 tries to make sense of it and fails. The secondary issue is that it is running on CORE 0 and hence there is some kind of issue that is not faced by CORE 1 a.k.a. loop(). I'll check it in detail later.
-2. Removed voltage sensor completely for now.
-</details>
+1. **Enhanced User Interface Responsiveness**: 
+   - Increased button delay for pump start, improving access to Pump Control.
+   - Extended push duration required for Menu access, reducing accidental activations.
 
-<details>
-<summary style="cursor: pointer; font-weight: bold;">Known Issues 1.1.0-beta</summary>
-1. Same as 1.0.2-alpha
-</details>
+2. **Improved Water Level Calculation**: 
+   - Implemented a more accurate algorithm for processing ultrasonic sensor readings.
+   - Enhanced reliability and precision in water level measurements.
 
-<details>
-<summary style="cursor: pointer; font-weight: bold;">Known Issues 1.0.3-alpha</summary>
-1. Same as 1.0.2-alpha
-</details>
+3. **Optimized OLED Display Updates**: 
+   - Introduced a smoother algorithm for water level animation on the OLED display.
+   - Reduced visual fluctuations while maintaining real-time responsiveness.
 
-<details>
-<summary style="cursor: pointer; font-weight: bold;">Known Issues 1.0.2-alpha</summary>
-1. Voltage Monitoring is not working (Giving higher values than individual test results, will look into it later).
-2. Wattage is dependent on voltage, so it is also not working.
+These updates collectively enhance user experience, improve system accuracy, and provide more stable visual feedback.
 </details>
 </div>
 
