@@ -54,7 +54,7 @@
 
 ## 🎯 Key Features & Capabilities
 
-<details open>
+<details>
 <summary><b>💪 Core Features</b></summary>
 
 - `⚡ Dual Core ESP32` - One core for UI, one for sensor monitoring
@@ -63,7 +63,7 @@
 - `💾 Preferences` - Persistent settings storage
 </details>
 
-<details open>
+<details>
 <summary><b>🛡️ Protection Systems</b></summary>
 
 - `🚱 Dry Run Protection` - Prevents pump damage from running dry
@@ -72,7 +72,7 @@
 - `📊 Load Monitoring` - Real-time current and power monitoring
 </details>
 
-<details open>
+<details>
 <summary><b>🎮 Smart Controls</b></summary>
 
 - `🔘 One-Button System` - Short press to navigate, long press to select
@@ -81,7 +81,7 @@
 - `⏲️ Timer Controls` - Scheduled operations
 </details>
 
-<details open>
+<details>
 <summary><b>📊 Monitoring & Logging</b></summary>
 
 - `💧 Water Level` - Real-time tank level monitoring
