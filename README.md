@@ -340,21 +340,10 @@ This project offers two methods for logging pump data to Google Sheets:
 
 ## ⚡ What's New
 <details>
-<summary style="cursor: pointer; font-weight: bold;">V1.2.1</summary>
+<summary style="cursor: pointer; font-weight: bold;">V1.2.2</summary>
 
-1. **Enhanced User Interface Responsiveness**: 
-   - Increased button delay for pump start, improving access to Pump Control.
-   - Extended push duration required for Menu access, reducing accidental activations.
-
-2. **Improved Water Level Calculation**: 
-   - Implemented a more accurate algorithm for processing ultrasonic sensor readings.
-   - Enhanced reliability and precision in water level measurements.
-
-3. **Optimized OLED Display Updates**: 
-   - Introduced a smoother algorithm for water level animation on the OLED display.
-   - Reduced visual fluctuations while maintaining real-time responsiveness.
-
-These updates collectively enhance user experience, improve system accuracy, and provide more stable visual feedback.
+1. **Water Volume Display**: 
+   - Approx. Water available in Litres is live now.
 </details>
 </div>
 
@@ -470,14 +459,6 @@ To enable the approximate water volume display:
 </td>
 </tr>
 </table>
-</div>
-
-<div align="center" style="margin-top: 40px; padding: 20px; background-color: #F8F9F9; border-radius: 10px;">
-  <p>🔧 Made with ❤️ for the IoT Community 🌐</p>
-  <p>
-    <a href="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/issues">🐛 Report Bug</a> ·
-    <a href="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/issues">✨ Request Feature</a>
-  </p>
 </div>
 
 <div style="background-color: #F5F5F5; padding: 20px; border-radius: 10px; margin-top: 20px;">
