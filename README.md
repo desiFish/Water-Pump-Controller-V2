@@ -231,6 +231,9 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
   - 📡 Ultrasonic Sensor
     - 📊 Real-time Monitoring
     - 📈 Level Tracking
+  - 🧮 Volume Calculation
+    - 💧 Approximate water volume in liters
+    - 🔧 Customizable tank capacity
 
 ### 🌐 Connectivity
 - **📡 WiFi Features**
@@ -411,6 +414,14 @@ Ultrasonic
 4. ✅ Verify results
 ```
 
+### 🔧 Tank Volume Configuration
+To enable the approximate water volume display:
+1. Locate the `TANK_VOLUME` definition in the code.
+2. Set its value to your tank's capacity in liters.
+3. Example: `#define TANK_VOLUME 1000 // for a 1000-liter tank`
+
+> 💡 **Note:** The accuracy of the volume estimation depends on the precision of your ultrasonic sensor calibration and the `TANK_VOLUME` setting.
+
 ### ⚡ Important Notes
 - **🔌 Voltage Protection:** External voltage protection is recommended
 - **📊 Current-Voltage Relationship:**
@@ -505,11 +516,13 @@ This project is licensed under the GNU General Public License v3.0 - see below f
 
 For the complete license text, see the [LICENSE](LICENSE) file in this repository or visit [GNU GPL v3](https://www.gnu.org/licenses/gpl-3.0.en.html).
 
-### Key Points of GPL v3:
-- You can freely use, modify, and distribute this software
-- If you distribute modified versions, you must:
-  - Make the source code available
-  - License it under GPL v3
-  - State your modifications
-- No warranty is provided
+</div>
+
+<div align="center" style="margin-top: 40px; padding: 20px; background: linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1, #6A0572); border-radius: 10px; color: white;">
+  <h2 style="margin-bottom: 10px;">Made with ❤️ for the IoT Community</h2>
+  <p style="font-size: 1.2em;">Empowering smart homes, one pump at a time! 🏠💧</p>
+  <div style="margin-top: 20px;">
+    <a href="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller" style="text-decoration: none; background-color: rgba(255,255,255,0.2); color: white; padding: 10px 20px; border-radius: 5px; margin: 0 10px;">⭐ Star Us on GitHub</a>
+    <a href="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/issues" style="text-decoration: none; background-color: rgba(255,255,255,0.2); color: white; padding: 10px 20px; border-radius: 5px; margin: 0 10px;">🐛 Report Issues</a>
+  </div>
 </div>

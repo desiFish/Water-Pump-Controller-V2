@@ -88,6 +88,7 @@ CRGB leds[NUM_LEDS];
 HardwareSerial uSonicSerial(2);
 #define uSonic_BAUD 9600
 #define MAX_ULTRASONIC_VALUE 400 // 400cm or 4meters or 4000 mm max distance read for this model (update accordingly)
+#define TANK_VOLUME 950          // tank will never fill up to the brims due to sensors, for 1000 L I am reducing 50 L (approx) (update accordingly)
 
 // Variables to hold sensor readings
 byte percBegin;
@@ -1303,52 +1304,6 @@ void drawTankLevel(byte x)
   display.setTextColor(SH110X_WHITE);
 }
 
-/*
-void drawTankLevel(byte x)
-{
-  if (holdData == 0)
-    holdData = x;
-
-  byte y = x - holdData;
-  y = y < 0 ? y : -(y); // always positive difference
-
-  if (y < 3) // stops the massive fluctuations in reading due to waves from falling water
-    holdData = x;
-  else if (y > 17)
-    holdData = x;
-
-  display.drawRoundRect(3, 20, 40, 41, 3, 1);
-  display.drawRoundRect(13, 18, 20, 3, 3, 1);
-
-  byte temp = holdData;
-  if (holdData > 99)
-    holdData = 99;
-  if (holdData == 0)
-    display.fillRect(5, 57, 36, 0, 1);
-  else
-  {
-    if (holdData < 3)
-      holdData = 3;
-    byte y = holdData / 3;
-    display.fillRect(5, 57, 36, -(y), 1); // y is max -33 hence percentage max value is capped at 99
-  }
-
-  display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-  if (temp == 100)
-  {
-    display.fillRect(11, 27, 25, 9, 1);
-    display.setCursor(12, 28);
-  }
-  else
-  {
-    display.fillRect(14, 27, 19, 9, 1); // creates background for the text
-    display.setCursor(15, 28);
-  }
-  display.print(String(temp) + "%");
-  display.setTextColor(SH110X_WHITE);
-}
-*/
-
 /**
  * @brief Calculates the water level percentage in the tank
  *
@@ -1398,7 +1353,7 @@ void vitals()
 {
   if (isPumpRunning)
   {
-    display.setCursor(50, 22);
+    display.setCursor(50, 12);
     display.print("Time:");
     display.print(timerHour < 10 ? "0" + String(timerHour) : String(timerHour)); // if hour or minute is less than 10 put a 0 before it
     display.print(":");
@@ -1423,6 +1378,9 @@ void vitals()
 
   if (useSensors)
   {
+    int volume = map(tankLevelPerc(), 0, 100, 0, TANK_VOLUME);
+    display.setCursor(50, 22);
+    display.print("Vol : ~ " + String(volume) + " L");
     display.setCursor(50, 42);
     display.print("Amp : " + String(liveAmp) + " A");
   }
