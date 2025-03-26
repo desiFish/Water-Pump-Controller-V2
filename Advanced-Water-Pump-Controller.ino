@@ -74,11 +74,11 @@ EnergyMonitor emon1;
 #define TURN_ON_RELAY digitalWrite(PUMP_PIN, HIGH) // update this
 #define TURN_OFF_RELAY digitalWrite(PUMP_PIN, LOW) // update this
 
-/*2 is 2 seconds, you can assign any time value you wish.
+/*5 is 5 seconds, you can assign any time value you wish.
  This is given because it takes a while for the current consumption to get stable.
  And there are all sort of current and voltage spikes just after the pump is ON
- Giving it few seconds should resolve it.*/
-#define WAIT_AFTER_PUMP_ON 2
+ Giving it few seconds should stabilize the reading.*/
+#define WAIT_AFTER_PUMP_ON 5
 
 #define NUM_LEDS 1
 // Define the array of leds
@@ -544,7 +544,7 @@ void setup(void)
                 {
         int params = request->params();
         for (int i = 0; i < params; i++) {
-          const AsyncWebParameter* p = request->getParam(i);
+          const AsyncWebParameter *p = request->getParam(i);
           if (p->isPost()) {
             // HTTP POST ssid value
             if (p->name() == PARAM_INPUT_1) {
@@ -1378,15 +1378,15 @@ void vitals()
 
   if (useSensors)
   {
-    int volume = map(tankLevelPerc(), 0, 100, 0, TANK_VOLUME);
-    display.setCursor(50, 22);
-    display.print("Vol : ~ " + String(volume) + " L");
     display.setCursor(50, 42);
     display.print("Amp : " + String(liveAmp) + " A");
   }
 
   if (useUltrasonic)
   {
+    int volume = map(tankLevelPerc(), 0, 100, 0, TANK_VOLUME);
+    display.setCursor(50, 22);
+    display.print("Vol : ~ " + String(volume) + " L");
     display.setCursor(50, 52);
     display.print("U.S.: " + String(liveTankLevel) + " cm");
   }
@@ -3525,22 +3525,18 @@ void errorMsg(byte code, bool sheetLogger)
     avgAmp += liveAmp;
     countAmp++;
     avgAmp /= countAmp;
-    pumpLog(errorCodeMessage[code - 1]);
+    if (timerHour == 0 && timerMinute == 0 && timerSecond < 15) // don't log if total run time is less than 15 secs
+      yield();
+    else
+      pumpLog(errorCodeMessage[code - 1]);
   }
   timerReset();
-
+  FastLED.setBrightness(250);
   if (code == 2)
-  {
-    FastLED.setBrightness(250);
     leds[0] = CRGB::Blue;
-    digitalWrite(BUZZER_PIN, HIGH);
-  }
   else
-  {
-    FastLED.setBrightness(250);
     leds[0] = CRGB::Red;
-    digitalWrite(BUZZER_PIN, HIGH);
-  }
+
   FastLED.show();
 
   while (true)
@@ -3551,10 +3547,18 @@ void errorMsg(byte code, bool sheetLogger)
     display.print("OKAY");
     display.setTextColor(SH110X_WHITE);
     display.display();
-    digitalWrite(BUZZER_PIN, LOW);
-    delay(100);
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(100);
+    if (code == 2)
+    {
+      digitalWrite(BUZZER_PIN, LOW);
+      delay(100);
+      digitalWrite(BUZZER_PIN, HIGH);
+      delay(100);
+    }
+    else
+    {
+      digitalWrite(BUZZER_PIN, HIGH);
+    }
+
     bool count = false;
 
     while (digitalRead(BUTTON) == 1)
@@ -3564,13 +3568,12 @@ void errorMsg(byte code, bool sheetLogger)
       count = true;
     }
 
-    leds[0] = CRGB::Black;
-    FastLED.show();
-
     if (count)
     {
       digitalWrite(BUZZER_PIN, LOW);
       delay(100);
+      leds[0] = CRGB::Black;
+      FastLED.show();
       return;
     }
   }
