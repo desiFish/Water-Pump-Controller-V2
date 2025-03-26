@@ -713,12 +713,16 @@ void loop2(void *pvParameters)
       {
         timerCount = sec;
         timerSecond++;
+        if (timerSecond == 30) // every 30 seconds, average the current
+        {
+          avgAmp += liveAmp;
+          countAmp++;
+        }
+
         if (timerSecond > 59)
         {
           timerSecond = 0;
           timerMinute++;
-          avgAmp += liveAmp;
-          countAmp++;
           if (timerMinute > 59)
           {
             timerMinute = 0;
