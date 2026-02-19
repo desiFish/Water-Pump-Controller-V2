@@ -2,3 +2,11 @@
 *.elf
 *.bin
 *.map
+build/esp32.esp32.esp32doit-devkit-v1/sdkconfig
+build/esp32.esp32.esp32doit-devkit-v1/partitions.csv
+build/esp32.esp32.esp32doit-devkit-v1/flash_args
+build/esp32.esp32.esp32doit-devkit-v1/build.options.json
+build/esp32.esp32.esp32/sdkconfig
+build/esp32.esp32.esp32/partitions.csv
+build/esp32.esp32.esp32/flash_args
+build/esp32.esp32.esp32/build.options.json

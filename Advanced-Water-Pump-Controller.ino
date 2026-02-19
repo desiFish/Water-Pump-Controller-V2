@@ -31,6 +31,7 @@ NOT USING CURRENTLY--> ZMPT101B Voltage Sensor
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <ElegantOTA.h>
+#include <LittleFS.h>
 
 // For Display and I2C
 #include <SPI.h>
@@ -48,7 +49,7 @@ NOT USING CURRENTLY--> ZMPT101B Voltage Sensor
 #include <WiFiUdp.h>
 
 // RGB LED (2812B)
-#include <FastLED.h>
+#include <Adafruit_NeoPixel.h>
 
 // For SCT013 Current Sensor
 #include "EmonLib.h"
@@ -81,8 +82,8 @@ EnergyMonitor emon1;
 #define WAIT_AFTER_PUMP_ON 5
 
 #define NUM_LEDS 1
-// Define the array of leds
-CRGB leds[NUM_LEDS];
+// Define the LED object
+Adafruit_NeoPixel pixels(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // Create an instance of the HardwareSerial class for Serial 2
 HardwareSerial uSonicSerial(2);
@@ -124,149 +125,8 @@ String apiKey;
 #define OLED_RESET -1    //   QT-PY / XIAO
 Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-// Wifi Manager HTML Code
-const char index_html[] PROGMEM = R"rawliteral(
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Wi-Fi Manager</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-html {
-  font-family: Arial, Helvetica, sans-serif; 
-  display: inline-block; 
-  text-align: center;
-}
-
-h1 {
-  font-size: 1.8rem; 
-  color: white;
-}
-
-p { 
-  font-size: 1.4rem;
-}
-
-.topnav { 
-  overflow: hidden; 
-  background-color: #0A1128;
-}
-
-body {  
-  margin: 0;
-}
-
-.content { 
-  padding: 5%;
-}
-
-.card-grid { 
-  max-width: 800px; 
-  margin: 0 auto; 
-  display: grid; 
-  grid-gap: 2rem; 
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-}
-
-.card { 
-  background-color: white; 
-  box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);
-}
-
-.card-title { 
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #034078
-}
-
-input[type=submit] {
-  border: none;
-  color: #FEFCFB;
-  background-color: #034078;
-  padding: 15px 15px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 16px;
-  width: 100px;
-  margin-right: 10px;
-  border-radius: 4px;
-  transition-duration: 0.4s;
-  }
-
-input[type=submit]:hover {
-  background-color: #1282A2;
-}
-
-input[type=text], input[type=number], select {
-  width: 50%;
-  padding: 12px 20px;
-  margin: 18px;
-  display: inline-block;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-label {
-  font-size: 1.2rem; 
-}
-.value{
-  font-size: 1.2rem;
-  color: #1282A2;  
-}
-.state {
-  font-size: 1.2rem;
-  color: #1282A2;
-}
-button {
-  border: none;
-  color: #FEFCFB;
-  padding: 15px 32px;
-  text-align: center;
-  font-size: 16px;
-  width: 100px;
-  border-radius: 4px;
-  transition-duration: 0.4s;
-}
-.button-on {
-  background-color: #034078;
-}
-.button-on:hover {
-  background-color: #1282A2;
-}
-.button-off {
-  background-color: #858585;
-}
-.button-off:hover {
-  background-color: #252524;
-} 
-  </style>
-</head>
-<body>
-  <div class="topnav">
-    <h1>Wi-Fi Manager</h1>
-  </div>
-  <div class="content">
-    <div class="card-grid">
-      <div class="card">
-        <form action="/wifi" method="POST">
-          <p>
-            <label for="ssid">SSID</label>
-            <input type="text" id ="ssid" name="ssid"><br>
-            <label for="pass">Password</label>
-            <input type="text" id ="pass" name="pass"><br>
-            <input type ="submit" value ="Submit">
-          </p>
-        </form>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
-)rawliteral";
-
-// Search for parameter in HTTP POST request
+// WiFi Manager HTML served from LittleFS (data/wifimanager.html)
+// HTTP POST parameter names
 const char *PARAM_INPUT_1 = "ssid";
 const char *PARAM_INPUT_2 = "pass";
 
@@ -314,9 +174,9 @@ void onOTAStart()
 {
   // Log when OTA has started
   updateInProgress = true;
-  FastLED.setBrightness(200);
-  leds[0] = CRGB::Red;
-  FastLED.show();
+  pixels.setBrightness(200);
+  pixels.setPixelColor(0, pixels.Color(255, 0, 0));
+  pixels.show();
   Serial.println("OTA update started!");
   display.clearDisplay();
   display.setTextColor(SH110X_WHITE);
@@ -403,10 +263,21 @@ void setup(void)
   digitalWrite(BUZZER_PIN, HIGH);
   delay(200);
   digitalWrite(BUZZER_PIN, LOW);
-  FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
-  FastLED.setBrightness(20);
-  leds[0] = CRGB::Red;
-  FastLED.show();
+  pixels.begin();
+  pixels.setBrightness(20);
+  pixels.setPixelColor(0, pixels.Color(255, 0, 0));
+  pixels.show();
+
+  // Initialize LittleFS for serving web files
+  if (!LittleFS.begin(true))
+  {
+    Serial.println("LittleFS Mount Failed");
+  }
+  else
+  {
+    Serial.println("LittleFS Mounted Successfully");
+  }
+
   pinMode(BUTTON, INPUT);
   pref.begin("database", false);
   display.begin(i2c_Address, true);
@@ -507,8 +378,8 @@ void setup(void)
     }
   }
 
-  leds[0] = CRGB::Yellow;
-  FastLED.show();
+  pixels.setPixelColor(0, pixels.Color(255, 255, 0));
+  pixels.show();
 
   if (useWifi)
   {
@@ -536,9 +407,14 @@ void setup(void)
       Serial.println(IP);
       wifiManagerInfoPrint();
 
-      // Web Server Root URL
+      // Web Server WiFi Manager Route - Serve from LittleFS
       server.on("/wifi", HTTP_GET, [](AsyncWebServerRequest *request)
-                { request->send(200, "text/html", index_html); });
+                { 
+                  if (LittleFS.exists("/wifimanager.html")) {
+                    request->send(LittleFS, "/wifimanager.html", "text/html");
+                  } else {
+                    request->send(404, "text/plain", "WiFi Manager file not found. Please upload data files.");
+                  } });
 
       server.on("/wifi", HTTP_POST, [](AsyncWebServerRequest *request)
                 {
@@ -560,7 +436,6 @@ void setup(void)
               Serial.println(password);
               pref.putString("password", password);
             }
-            //Serial.printf("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
           }
         }
         request->send(200, "text/plain", "Done. Device will now restart.");
@@ -772,8 +647,8 @@ void loop(void)
   {
     if (resetFlag) // after resetting (set in menu options; reset), esp32 will restart
     {
-      leds[0] = CRGB::Red;
-      FastLED.show();
+      pixels.setPixelColor(0, pixels.Color(255, 0, 0));
+      pixels.show();
       display.clearDisplay();
       display.setTextColor(SH110X_WHITE);
       display.setTextSize(1);
@@ -787,8 +662,8 @@ void loop(void)
       ESP.restart();
     }
 
-    leds[0] = CRGB::Black;
-    FastLED.show();
+    pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+    pixels.show();
 
     unsigned long currentMillis = millis();
     if (currentMillis - previousMillis >= interval)
@@ -805,20 +680,20 @@ void loop(void)
       if (isPumpRunning)
       {
         display.println("PUMP: ON");
-        leds[0] = CRGB::Purple;
-        FastLED.show();
+        pixels.setPixelColor(0, pixels.Color(128, 0, 128));
+        pixels.show();
       }
       else if (!doneForToday)
       {
         display.println("PUMP: OFF");
-        leds[0] = CRGB::White;
-        FastLED.show();
+        pixels.setPixelColor(0, pixels.Color(255, 255, 255));
+        pixels.show();
       }
       else
       {
         display.println("PUMP: OFF");
-        leds[0] = CRGB::Green;
-        FastLED.show();
+        pixels.setPixelColor(0, pixels.Color(0, 255, 0));
+        pixels.show();
       }
 
       if (useUltrasonic)
@@ -848,14 +723,14 @@ void loop(void)
       delay(50);
     }
 
-    FastLED.setBrightness(20);
-    leds[0] = CRGB::Black;
-    FastLED.show();
+    pixels.setBrightness(20);
+    pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+    pixels.show();
 
     if (count >= 1 && count <= 30)
     {
-      leds[0] = CRGB::Yellow;
-      FastLED.show();
+      pixels.setPixelColor(0, pixels.Color(255, 255, 0));
+      pixels.show();
       pumpRunSequence();
     }
     else
@@ -924,9 +799,9 @@ void pumpRunSequence(bool flag)
           delay(50);
         }
 
-        FastLED.setBrightness(20);
-        leds[0] = CRGB::Black;
-        FastLED.show();
+        pixels.setBrightness(20);
+        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+        pixels.show();
 
         if (count >= 1 && count <= 8)
         {
@@ -1013,9 +888,9 @@ void pumpRunSequence(bool flag)
           option = 2;
         }
 
-        FastLED.setBrightness(20);
-        leds[0] = CRGB::Black;
-        FastLED.show();
+        pixels.setBrightness(20);
+        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+        pixels.show();
 
         if (count >= 1 && count <= 8)
         {
@@ -1039,8 +914,8 @@ void pumpRunSequence(bool flag)
                 startTime = onlyTime;
                 percBegin = tankLevelPerc();
               }
-              leds[0] = CRGB::Cyan;
-              FastLED.show();
+              pixels.setPixelColor(0, pixels.Color(0, 255, 255));
+              pixels.show();
               pumpOnDelay();
               holdData = 0;
               countAmp = 0;
@@ -1165,12 +1040,12 @@ void runPumpAuto()
     display.setCursor(62, 45);
     display.print(i);
     display.display();
-    FastLED.setBrightness(250);
-    leds[0] = CRGB::Blue;
-    FastLED.show();
+    pixels.setBrightness(250);
+    pixels.setPixelColor(0, pixels.Color(0, 0, 255));
+    pixels.show();
     delay(1000);
-    leds[0] = CRGB::Black;
-    FastLED.show();
+    pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+    pixels.show();
     yield();
     i--;
     bool count = false;
@@ -1180,8 +1055,8 @@ void runPumpAuto()
       delay(100);
       count = true;
     }
-    leds[0] = CRGB::Black;
-    FastLED.show();
+    pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+    pixels.show();
     if (count)
       return;
   }
@@ -1469,9 +1344,9 @@ void menu(void)
         delay(60);
       }
 
-      FastLED.setBrightness(20);
-      leds[0] = CRGB::Black;
-      FastLED.show();
+      pixels.setBrightness(20);
+      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+      pixels.show();
 
       if (count >= 1 && count <= 6)
       {
@@ -1512,21 +1387,21 @@ void blinkOrange(byte times, byte brightValue, int blinkDuration)
 {
   if (times == 0)
   {
-    FastLED.setBrightness(brightValue);
-    leds[0] = CRGB::Orange;
-    FastLED.show();
+    pixels.setBrightness(brightValue);
+    pixels.setPixelColor(0, pixels.Color(255, 165, 0));
+    pixels.show();
   }
   else
   {
     int i = 0;
     while (i < times)
     {
-      FastLED.setBrightness(brightValue);
-      leds[0] = CRGB::Orange;
-      FastLED.show();
+      pixels.setBrightness(brightValue);
+      pixels.setPixelColor(0, pixels.Color(255, 165, 0));
+      pixels.show();
       delay(blinkDuration);
-      leds[0] = CRGB::Black;
-      FastLED.show();
+      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+      pixels.show();
       delay(blinkDuration);
       i++;
     }
@@ -1590,9 +1465,9 @@ void dataLimit()
         delay(50);
       }
 
-      FastLED.setBrightness(20);
-      leds[0] = CRGB::Black;
-      FastLED.show();
+      pixels.setBrightness(20);
+      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+      pixels.show();
       if (count >= 1 && count <= 6)
       {
         option++;
@@ -1672,9 +1547,9 @@ void ultraSonicValues()
         delay(50);
       }
 
-      FastLED.setBrightness(20);
-      leds[0] = CRGB::Black;
-      FastLED.show();
+      pixels.setBrightness(20);
+      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+      pixels.show();
       if (count >= 1 && count <= 6)
       {
         option++;
@@ -1741,9 +1616,9 @@ void ultraSonicValues()
                 delay(50);
               }
 
-              FastLED.setBrightness(20);
-              leds[0] = CRGB::Black;
-              FastLED.show();
+              pixels.setBrightness(20);
+              pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+              pixels.show();
               if (count >= 1 && count <= 2)
               {
                 option++;
@@ -1825,9 +1700,9 @@ void ultraSonicValues()
                 delay(50);
               }
 
-              FastLED.setBrightness(20);
-              leds[0] = CRGB::Black;
-              FastLED.show();
+              pixels.setBrightness(20);
+              pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+              pixels.show();
               if (count >= 1 && count <= 2)
               {
                 option++;
@@ -1977,9 +1852,9 @@ void ultraSonicValues()
             display.display();
           }
 
-          FastLED.setBrightness(20);
-          leds[0] = CRGB::Black;
-          FastLED.show();
+          pixels.setBrightness(20);
+          pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+          pixels.show();
 
           display.clearDisplay();
           display.display();
@@ -2104,9 +1979,9 @@ void ultraSonicValues()
             count = 0;
             display.display();
           }
-          FastLED.setBrightness(20);
-          leds[0] = CRGB::Black;
-          FastLED.show();
+          pixels.setBrightness(20);
+          pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+          pixels.show();
         }
         else if (option == 3)
           return;
@@ -2168,9 +2043,9 @@ void ampereValues()
         delay(50);
       }
 
-      FastLED.setBrightness(20);
-      leds[0] = CRGB::Black;
-      FastLED.show();
+      pixels.setBrightness(20);
+      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+      pixels.show();
 
       if (count >= 1 && count <= 6)
       {
@@ -2238,9 +2113,9 @@ void ampereValues()
                 delay(50);
               }
 
-              FastLED.setBrightness(20);
-              leds[0] = CRGB::Black;
-              FastLED.show();
+              pixels.setBrightness(20);
+              pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+              pixels.show();
 
               if (count >= 1 && count <= 2)
               {
@@ -2323,9 +2198,9 @@ void ampereValues()
                 delay(50);
               }
 
-              FastLED.setBrightness(20);
-              leds[0] = CRGB::Black;
-              FastLED.show();
+              pixels.setBrightness(20);
+              pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+              pixels.show();
 
               if (count >= 1 && count <= 2)
               {
@@ -2472,9 +2347,9 @@ void ampereValues()
             display.display();
           }
 
-          FastLED.setBrightness(20);
-          leds[0] = CRGB::Black;
-          FastLED.show();
+          pixels.setBrightness(20);
+          pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+          pixels.show();
 
           display.clearDisplay();
           display.display();
@@ -2599,9 +2474,9 @@ void ampereValues()
             count = 0;
             display.display();
           }
-          FastLED.setBrightness(20);
-          leds[0] = CRGB::Black;
-          FastLED.show();
+          pixels.setBrightness(20);
+          pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+          pixels.show();
         }
         else if (option == 3)
           return;
@@ -2686,9 +2561,9 @@ void configurations()
         delay(50);
       }
 
-      FastLED.setBrightness(20);
-      leds[0] = CRGB::Black;
-      FastLED.show();
+      pixels.setBrightness(20);
+      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+      pixels.show();
 
       if (count >= 1 && count <= 6)
       {
@@ -2771,9 +2646,9 @@ void configurations()
           delay(50);
         }
 
-        FastLED.setBrightness(20);
-        leds[0] = CRGB::Black;
-        FastLED.show();
+        pixels.setBrightness(20);
+        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+        pixels.show();
 
         if (count >= 1 && count <= 2)
         {
@@ -2856,9 +2731,9 @@ void configurations()
           delay(50);
         }
 
-        FastLED.setBrightness(20);
-        leds[0] = CRGB::Black;
-        FastLED.show();
+        pixels.setBrightness(20);
+        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+        pixels.show();
 
         if (count >= 1 && count <= 2)
         {
@@ -2942,9 +2817,9 @@ void configurations()
           delay(50);
         }
 
-        FastLED.setBrightness(20);
-        leds[0] = CRGB::Black;
-        FastLED.show();
+        pixels.setBrightness(20);
+        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+        pixels.show();
 
         if (count >= 1 && count <= 2)
         {
@@ -3026,9 +2901,9 @@ void configSensors()
         delay(50);
       }
 
-      FastLED.setBrightness(20);
-      leds[0] = CRGB::Black;
-      FastLED.show();
+      pixels.setBrightness(20);
+      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+      pixels.show();
 
       if (count >= 1 && count <= 6)
       {
@@ -3102,9 +2977,9 @@ void configSensors()
           delay(50);
         }
 
-        FastLED.setBrightness(20);
-        leds[0] = CRGB::Black;
-        FastLED.show();
+        pixels.setBrightness(20);
+        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+        pixels.show();
 
         if (count >= 1 && count <= 2)
         {
@@ -3186,9 +3061,9 @@ void configSensors()
           delay(50);
         }
 
-        FastLED.setBrightness(20);
-        leds[0] = CRGB::Black;
-        FastLED.show();
+        pixels.setBrightness(20);
+        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+        pixels.show();
 
         if (count >= 1 && count <= 2)
         {
@@ -3271,9 +3146,9 @@ void configTime()
         delay(50);
       }
 
-      FastLED.setBrightness(20);
-      leds[0] = CRGB::Black;
-      FastLED.show();
+      pixels.setBrightness(20);
+      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+      pixels.show();
 
       if (count >= 1 && count <= 6)
       {
@@ -3349,9 +3224,9 @@ void autoTimeUpdate(bool temp)
             delay(50);
           }
 
-          FastLED.setBrightness(20);
-          leds[0] = CRGB::Black;
-          FastLED.show();
+          pixels.setBrightness(20);
+          pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+          pixels.show();
 
           if (count >= 1)
             break;
@@ -3386,9 +3261,9 @@ void autoTimeUpdate(bool temp)
           delay(50);
         }
 
-        FastLED.setBrightness(20);
-        leds[0] = CRGB::Black;
-        FastLED.show();
+        pixels.setBrightness(20);
+        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+        pixels.show();
 
         if (count >= 1)
           break;
@@ -3401,9 +3276,9 @@ void autoTimeUpdate(bool temp)
 void totalReset()
 {
   byte count = 0, option = 1;
-  FastLED.setBrightness(150);
-  leds[0] = CRGB::Red;
-  FastLED.show();
+  pixels.setBrightness(150);
+  pixels.setPixelColor(0, pixels.Color(255, 0, 0));
+  pixels.show();
   while (true)
   {
     display.clearDisplay();
@@ -3453,9 +3328,9 @@ void totalReset()
         delay(50);
       }
 
-      FastLED.setBrightness(20);
-      leds[0] = CRGB::Black;
-      FastLED.show();
+      pixels.setBrightness(20);
+      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+      pixels.show();
 
       if (count >= 1 && count <= 2)
       {
@@ -3535,13 +3410,13 @@ void errorMsg(byte code, bool sheetLogger)
       pumpLog(errorCodeMessage[code - 1]);
   }
   timerReset();
-  FastLED.setBrightness(250);
+  pixels.setBrightness(250);
   if (code == 2)
-    leds[0] = CRGB::Blue;
+    pixels.setPixelColor(0, pixels.Color(0, 0, 255));
   else
-    leds[0] = CRGB::Red;
+    pixels.setPixelColor(0, pixels.Color(255, 0, 0));
 
-  FastLED.show();
+  pixels.show();
 
   while (true)
   {
@@ -3576,8 +3451,8 @@ void errorMsg(byte code, bool sheetLogger)
     {
       digitalWrite(BUZZER_PIN, LOW);
       delay(100);
-      leds[0] = CRGB::Black;
-      FastLED.show();
+      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+      pixels.show();
       return;
     }
   }
@@ -3677,9 +3552,9 @@ void sysWatcher()
         delay(50);
       }
 
-      FastLED.setBrightness(20);
-      leds[0] = CRGB::Black;
-      FastLED.show();
+      pixels.setBrightness(20);
+      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+      pixels.show();
       if (count >= 1 && count <= 2)
       {
         option++;
