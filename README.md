@@ -129,17 +129,20 @@
 | 9.   | Any desired float sensor | |
 | 10.  | Wires, connectors, etc | According to your need |
 | 11.  | Fotek 100Amps SSR | |
+| 12.  | Schneider LC1E1210M7 Contactor (220V AC coil) | [Product Link](https://www.se.com/in/en/product/LC1E1210M7/easy-tesys-contactor-3p3-no-ac3-440-v-12a-220-v-ac-coil/) - Upgraded from SSR for better reliability |
 </div>
 
 <div style="background-color: #FEF9E7; padding: 20px; border-radius: 10px; margin-top: 20px;">
 
 ## 🚀 Upcoming Features
 Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/issues)
+
+> **Latest Changes:** See [v1.3.0 Release](https://github.com/desiFish/Water-Pump-Controller-V2/releases/tag/v1.3.0) for information about contactor upgrade and recent improvements.
 </div>
 
 <div style="background-color: #FEF9E7; padding: 20px; border-radius: 10px; margin-top: 20px;">
 
-## 📸 Pictures & Schematics
+## 📸 Pictures & Schematics [Update pending]
 <table style="width:100%; border-collapse: collapse; margin: 20px 0;">
   <tr>
     <td align="center" style="padding: 10px;">
