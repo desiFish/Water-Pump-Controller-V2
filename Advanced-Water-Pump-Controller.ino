@@ -47,6 +47,7 @@ NOT USING CURRENTLY--> ZMPT101B Voltage Sensor
 #include "RTClib.h"
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+#include <time.h>
 
 // RGB LED (2812B)
 #include <Adafruit_NeoPixel.h>
@@ -79,7 +80,7 @@ EnergyMonitor emon1;
  This is given because it takes a while for the current consumption to get stable.
  And there are all sort of current and voltage spikes just after the pump is ON
  Giving it few seconds should stabilize the reading.*/
-#define WAIT_AFTER_PUMP_ON 5
+#define WAIT_AFTER_PUMP_ON 3
 
 #define NUM_LEDS 1
 // Define the LED object
@@ -134,7 +135,7 @@ const char *PARAM_INPUT_2 = "pass";
 int tankLow, tankFull, liveTankLevel;
 // variables ampLow for lowest safe level and ampMax for safe ampere max value.
 float ampLow, ampMax;
-float liveAmp, avgAmp;
+float liveAmp, sumAmp;
 int countAmp;
 // pump status
 bool isPumpRunning = false;
@@ -146,7 +147,8 @@ bool resetFlag = false, updateInProgress = false;
 
 String errorCodeMessage[] = {"USR INTRPT", "TANK FULL", "HIGH AMPERE", "LOW AMPERE"};
 // time and timer related variables
-byte timeHour, timeMinute, timerHour = 0, timerMinute = 0, timerSecond = 0, timerCount = 0;
+byte timeHour, timeMinute;
+time_t pumpStartTime = 0; // timestamp when pump starts (for elapsed time calculation)
 int onTime = 1230, offTime = 1330, lastDay;
 bool doneForToday, autoRun;
 String dateAndTime, onlyTime;
@@ -248,6 +250,18 @@ void blinkOrange(byte, byte, int = 50);
 void autoTimeUpdate(bool = true);
 void pumpRunSequence(bool = false);
 
+enum PumpStatus : byte
+{
+  STATUS_OK = 0,
+  STATUS_NEEDS_WATER = 1,
+
+  ALERT_TANK_FULL = 2,
+  ALERT_OVERCURRENT = 3,
+  ALERT_UNDERCURRENT = 4,
+
+  ALERT_AUTOSTART = 99
+};
+
 /**
  * @brief Initializes the pump controller system
  *
@@ -257,11 +271,11 @@ void pumpRunSequence(bool = false);
 void setup(void)
 {
   Serial.begin(115200);
-  pinMode(BUZZER_PIN, OUTPUT);
   pinMode(PUMP_PIN, OUTPUT);
   TURN_OFF_RELAY;
+  pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, HIGH);
-  delay(200);
+  delay(500);
   digitalWrite(BUZZER_PIN, LOW);
   pixels.begin();
   pixels.setBrightness(20);
@@ -553,73 +567,97 @@ void setup(void)
  */
 void loop2(void *pvParameters)
 {
+  static uint32_t lastRtcUpdate = 0;
+  static uint32_t lastAmpSample = 0;
+
   for (;;)
   {
+    uint32_t currentMillis = millis();
+    // =========================
+    // Sensor updates
+    // =========================
+
     if (useSensors)
       liveAmp = readAmpere();
-    delay(10);
 
     if (useFloat)
-      floatSensor = readFloat(); // reads float sensor value and updates it
-    delay(10);
+      floatSensor = readFloat();
 
     if (useUltrasonic)
       liveTankLevel = readUltrasonic();
-    delay(10);
+
+    // =========================
+    // Pump safety monitoring
+    // =========================
 
     if (isPumpRunning)
     {
-      raiseAlert = intelligentMonitoring();
-      Serial.print("PUMP RUN ERRORCODE");
-      Serial.println(": " + String(raiseAlert));
-    }
-    delay(10);
+      byte err = monitorPumpSafety();
 
-    DateTime now = rtc.now();
-    timeHour = now.hour();
-    timeMinute = now.minute();
-    dateAndTime = now.timestamp(DateTime::TIMESTAMP_FULL);
-    onlyTime = now.timestamp(DateTime::TIMESTAMP_TIME);
-
-    if (isPumpRunning)
-    {
-      byte sec = now.second();
-      if (timerCount != sec)
+      // Immediate protection
+      if (err >= ALERT_TANK_FULL &&
+          err <= ALERT_UNDERCURRENT)
       {
-        timerCount = sec;
-        timerSecond++;
-        if (timerSecond == 30) // every 30 seconds, average the current
-        {
-          avgAmp += liveAmp;
-          countAmp++;
-        }
+        TURN_OFF_RELAY;
+        isPumpRunning = false;
+      }
 
-        if (timerSecond > 59)
-        {
-          timerSecond = 0;
-          timerMinute++;
-          if (timerMinute > 59)
-          {
-            timerMinute = 0;
-            timerHour++;
-            if (timerHour > 23)
-              timerHour = 0;
-          }
-        }
+      // Notify UI
+      if (err >= ALERT_TANK_FULL && raiseAlert == 0)
+      {
+        raiseAlert = err;
+      }
+
+      Serial.print("PUMP RUN ERRORCODE: ");
+      Serial.println(err);
+    }
+
+    // =========================
+    // RTC update (1 second)
+    // =========================
+
+    if (currentMillis - lastRtcUpdate >= 1000)
+    {
+      lastRtcUpdate = currentMillis;
+
+      DateTime now = rtc.now();
+
+      timeHour = now.hour();
+      timeMinute = now.minute();
+
+      dateAndTime = now.timestamp(DateTime::TIMESTAMP_FULL);
+
+      onlyTime = now.timestamp(DateTime::TIMESTAMP_TIME);
+    }
+
+    // =========================
+    // Current averaging
+    // =========================
+
+    if (isPumpRunning)
+    {
+      if (currentMillis - lastAmpSample >= 1000)
+      {
+        lastAmpSample = currentMillis;
+
+        sumAmp += liveAmp;
+        countAmp++;
       }
     }
 
-    if (autoRun && !doneForToday && !isPumpRunning)
+    // =========================
+    // Automatic schedule
+    // =========================
+
+    if (autoRun && !doneForToday && !isPumpRunning && raiseAlert == 0)
     {
-      bool flag = checkTimeFor(onTime, offTime);
-      if (flag)
+      if (checkTimeFor(onTime, offTime))
       {
-        raiseAlert = 99; // special case for automatic pump start
+        raiseAlert = 99;
         doneForToday = true;
       }
     }
-
-    delay(10);
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
@@ -635,13 +673,18 @@ void loop(void)
   if (!isPumpRunning && useWifi)
     ElegantOTA.loop();
 
-  if (raiseAlert > 1 && raiseAlert < 5)
+  if (raiseAlert == ALERT_AUTOSTART)
+  {
+    raiseAlert = STATUS_OK;
+    runPumpAuto();
+  }
+
+  if (raiseAlert >= ALERT_TANK_FULL &&
+      raiseAlert <= ALERT_UNDERCURRENT)
   {
     errorMsg(raiseAlert, true);
-    raiseAlert = 0;
+    raiseAlert = STATUS_OK;
   }
-  else if (raiseAlert == 99)
-    runPumpAuto();
 
   if (!updateInProgress)
   {
@@ -904,11 +947,12 @@ void pumpRunSequence(bool flag)
             break; // NO
           else if (option == 2)
           { // YES
-            byte errorCode = intelligentMonitoring();
+            byte errorCode = monitorPumpSafety();
             if (errorCode == 0 || errorCode == 1) // check if there is any error
             {
+              isPumpRunning = true;
               TURN_ON_RELAY;
-              delay(300);
+              pumpStartTime = time(NULL); // Record pump start time
               if (useWifi)
               {
                 startTime = onlyTime;
@@ -919,8 +963,7 @@ void pumpRunSequence(bool flag)
               pumpOnDelay();
               holdData = 0;
               countAmp = 0;
-              avgAmp = 0;
-              isPumpRunning = true;
+              sumAmp = 0;
               break;
             }
             else
@@ -944,62 +987,46 @@ void pumpRunSequence(bool flag)
  *
  * This function checks various sensor readings and system states to ensure safe operation.
  */
-byte intelligentMonitoring()
+byte monitorPumpSafety()
 {
-  byte err = 0;
-
-  if (isPumpRunning) // PUMP ON OFF BACKUP CONTROL
-    TURN_ON_RELAY;
-  else
-    TURN_OFF_RELAY;
-
-  if (useFloat)
-    if (!floatSensor) // tank not full
-      err = 1;
-
-  if (useFloat)
-  {
-    if (floatSensor) // tank full
-    {
-      err = 2;
-      TURN_OFF_RELAY;
-      delay(200);
-      isPumpRunning = false;
-    }
-  }
+  if (useFloat && floatSensor)
+    return ALERT_TANK_FULL;
 
   if (useSensors && isPumpRunning)
   {
     if (liveAmp > ampMax)
-    {
-      err = 3; // RUN CONDITION WHERE PUMP DRAWS MORE CURRENT
-      TURN_OFF_RELAY;
-      delay(200);
-      isPumpRunning = false;
-    }
+      return ALERT_OVERCURRENT;
 
     if (liveAmp < ampLow)
-    {
-      err = 4; // RUN CONDITION WHERE PUMP DRAWS LESS CURRENT
-      TURN_OFF_RELAY;
-      delay(200);
-      isPumpRunning = false;
-    }
-
-    if (liveAmp > 1.5) // verifies if something is drawing current or not
-      isPumpRunning = true;
-    else
-      isPumpRunning = false;
+      return ALERT_UNDERCURRENT;
   }
-  return err;
+
+  if (useFloat && !floatSensor)
+    return STATUS_NEEDS_WATER;
+
+  return STATUS_OK;
+}
+/**
+ * @brief Format elapsed time as HH:MM:SS string
+ * @param elapsedSeconds Total elapsed seconds since pump started
+ * @return Formatted string in HH:MM:SS format
+ */
+String formatElapsedTime(time_t elapsedSeconds)
+{
+  int hours = elapsedSeconds / 3600;
+  int minutes = (elapsedSeconds % 3600) / 60;
+  int seconds = elapsedSeconds % 60;
+
+  String h = hours < 10 ? "0" + String(hours) : String(hours);
+  String m = minutes < 10 ? "0" + String(minutes) : String(minutes);
+  String s = seconds < 10 ? "0" + String(seconds) : String(seconds);
+
+  return h + ":" + m + ":" + s;
 }
 
 void timerReset()
 {
-  timerMinute = 0;
-  timerSecond = 0;
-  timerHour = 0;
-  timerCount = 0;
+  pumpStartTime = 0; // Reset pump start time
 }
 
 void pumpOnDelay()
@@ -1027,7 +1054,7 @@ void runPumpAuto()
 {
   raiseAlert = 0;
   byte i = 10;
-  while (i > 0)
+  while (i > 0 && isPumpRunning == false)
   {
     display.clearDisplay();
     display.setTextColor(SH110X_WHITE);
@@ -1049,31 +1076,30 @@ void runPumpAuto()
     yield();
     i--;
     bool count = false;
-    while (digitalRead(BUTTON) == 1)
+    if (digitalRead(BUTTON) == 1)
     {
-      blinkOrange(0, 150, 0);
-      delay(100);
       count = true;
     }
-    pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-    pixels.show();
     if (count)
       return;
   }
   pumpRunSequence(true);
 }
 
+constexpr uint16_t CURRENT_SAMPLES = 1480;
+
 /**
  * @brief Reads current value from the ampere sensor
  *
- * @return double Current reading in amperes
+ * @return float Current reading in amperes
  */
-double readAmpere()
+float readAmpere()
 {
-  double Irms = emon1.calcIrms(1480); // Calculate Irms only
-  return Irms;
+  return emon1.calcIrms(CURRENT_SAMPLES);
 }
 
+bool usWaitingForResponse = false;
+uint32_t usTriggerTime = 0;
 /**
  * @brief Reads distance value from the ultrasonic sensor
  *
@@ -1081,24 +1107,51 @@ double readAmpere()
  */
 int readUltrasonic()
 {
-  static int x;
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis1 >= interval1)
+  static int distanceCm = 0;
+
+  uint32_t currentMillis = millis();
+
+  // Time to start a new measurement
+  if (!usWaitingForResponse &&
+      (currentMillis - previousMillis1 >= interval1))
   {
     previousMillis1 = currentMillis;
-    uSonicSerial.write(0x01);
-    delay(10);
-    if (uSonicSerial.available())
-    {
-      // Serial.println(uSonicSerial.readString());
-      delay(100);
-      x = ((uSonicSerial.readString()).substring(4, 8)).toInt();
-      x = x / 10;
-      Serial.println(String(x) + " cm");
-    }
+
+    // Clear old UART data
+    while (uSonicSerial.available())
+      uSonicSerial.read();
+
+    uSonicSerial.write(0x55);
+
+    usTriggerTime = currentMillis;
+    usWaitingForResponse = true;
   }
-  liveTankLevel = x;
-  return liveTankLevel;
+
+  // Wait for sensor response without blocking
+  if (usWaitingForResponse &&
+      (currentMillis - usTriggerTime >= 70))
+  {
+    String response = "";
+
+    while (uSonicSerial.available())
+    {
+      response += (char)uSonicSerial.read();
+    }
+
+    if (response.startsWith("Gap="))
+    {
+      int distanceMm = response.substring(4).toInt();
+
+      if (distanceMm > 0 && distanceMm < 10000)
+      {
+        distanceCm = distanceMm / 10;
+      }
+    }
+
+    usWaitingForResponse = false;
+  }
+
+  return distanceCm;
 }
 
 /**
@@ -1108,18 +1161,20 @@ int readUltrasonic()
  */
 bool readFloat()
 {
-  static bool tempFloatVal;
-  unsigned long currentMillis = millis();
+  static bool floatState = false;
+
+  uint32_t currentMillis = millis();
+
   if (currentMillis - previousMillis2 >= interval2)
   {
     previousMillis2 = currentMillis;
-    if (analogRead(FLOAT_SENSOR) > 900) // FULL/UP
-      tempFloatVal = false;
-    else // NOT FULL/DOWN
-      tempFloatVal = true;
+
+    // true = tank full
+    // false = tank not full
+    floatState = (analogRead(FLOAT_SENSOR) <= 900);
   }
-  floatSensor = tempFloatVal;
-  return floatSensor;
+
+  return floatState;
 }
 
 /**
@@ -1234,11 +1289,8 @@ void vitals()
   {
     display.setCursor(50, 12);
     display.print("Time:");
-    display.print(timerHour < 10 ? "0" + String(timerHour) : String(timerHour)); // if hour or minute is less than 10 put a 0 before it
-    display.print(":");
-    display.print(timerMinute < 10 ? "0" + String(timerMinute) : String(timerMinute));
-    display.print(":");
-    display.print(timerSecond < 10 ? "0" + String(timerSecond) : String(timerSecond));
+    time_t elapsedTime = time(NULL) - pumpStartTime;
+    display.print(formatElapsedTime(elapsedTime));
   }
 
   if (useFloat)
@@ -1385,26 +1437,24 @@ void menu(void)
  */
 void blinkOrange(byte times, byte brightValue, int blinkDuration)
 {
+  pixels.setBrightness(brightValue);
+
   if (times == 0)
   {
-    pixels.setBrightness(brightValue);
     pixels.setPixelColor(0, pixels.Color(255, 165, 0));
     pixels.show();
+    return;
   }
-  else
+
+  for (byte i = 0; i < times; i++)
   {
-    int i = 0;
-    while (i < times)
-    {
-      pixels.setBrightness(brightValue);
-      pixels.setPixelColor(0, pixels.Color(255, 165, 0));
-      pixels.show();
-      delay(blinkDuration);
-      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-      pixels.show();
-      delay(blinkDuration);
-      i++;
-    }
+    pixels.setPixelColor(0, pixels.Color(255, 165, 0));
+    pixels.show();
+    delay(blinkDuration);
+
+    pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+    pixels.show();
+    delay(blinkDuration);
   }
 }
 
@@ -3383,11 +3433,8 @@ void errorMsg(byte code, bool sheetLogger)
   // Print how much time it took
   display.setCursor(0, 25);
   display.print("Time Taken: ");
-  display.print(timerHour < 10 ? "0" + String(timerHour) : String(timerHour)); // if hour or minute is less than 10 put a 0 before it
-  display.print(":");
-  display.print(timerMinute < 10 ? "0" + String(timerMinute) : String(timerMinute));
-  display.print(":");
-  display.print(timerSecond < 10 ? "0" + String(timerSecond) : String(timerSecond));
+  time_t totalRuntime = time(NULL) - pumpStartTime;
+  display.print(formatElapsedTime(totalRuntime));
   display.display();
   if (useWifi && sheetLogger)
   {
@@ -3401,10 +3448,12 @@ void errorMsg(byte code, bool sheetLogger)
     }
     else
       percEnd = tankLevelPerc();
-    avgAmp += liveAmp;
+    sumAmp += liveAmp;
     countAmp++;
-    avgAmp /= countAmp;
-    if (timerHour == 0 && timerMinute == 0 && timerSecond < 15) // don't log if total run time is less than 15 secs
+    sumAmp /= countAmp;
+    // Check if pump ran for at least 2 minutes before logging
+    time_t totalRuntime = time(NULL) - pumpStartTime;
+    if (totalRuntime < 120) // don't log if total run time is less than 2 minutes
       yield();
     else
       pumpLog(errorCodeMessage[code - 1]);
@@ -3625,11 +3674,13 @@ void pumpLog(String errM)
   {
     WiFiClient client;
     HTTPClient http;
-    String temp = String(timerHour) + ":" + String(timerMinute) + ":" + String(timerSecond);
+    // Calculate elapsed time since pump started
+    time_t elapsedTime = time(NULL) - pumpStartTime;
+    String temp = formatElapsedTime(elapsedTime);
 
     // Your Domain name with URL path or IP address with path
     http.begin(client, serverName);
-    String msg = dateAndTime + "#" + startTime + "#" + endTime + "#" + String(percBegin) + "#" + String(percEnd) + "#" + temp + "#" + avgAmp + "#" + errM;
+    String msg = dateAndTime + "#" + startTime + "#" + endTime + "#" + String(percBegin) + "#" + String(percEnd) + "#" + temp + "#" + sumAmp + "#" + errM;
 
     // If you need an HTTP request with a content type: application/json, use the following:
     // Specify content-type header
