@@ -128,7 +128,7 @@
 | 8.   | Any Push Button | I used metal one, feels sturdy |
 | 9.   | Any desired float sensor | |
 | 10.  | Wires, connectors, etc | According to your need |
-| 11.  | Fotek 100Amps SSR | |
+| 11.  | Fotek 100Amps SSR | Now that pump runs via contactor, a small 6A mechanical relay or 2A Omron solid state relay can be used instead |
 | 12.  | Schneider LC1E1210M7 Contactor (220V AC coil) | [Product Link](https://www.se.com/in/en/product/LC1E1210M7/easy-tesys-contactor-3p3-no-ac3-440-v-12a-220-v-ac-coil/) - Upgraded from SSR for better reliability |
 </div>
 
