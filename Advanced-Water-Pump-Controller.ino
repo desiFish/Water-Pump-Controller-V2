@@ -1107,7 +1107,21 @@ void runPumpAuto()
     {
       if (digitalRead(BUTTON) == 1)
       {
+        if (activeAutoRunPeriod >= 1 && activeAutoRunPeriod <= 3)
+        {
+          doneForToday |= (1 << (activeAutoRunPeriod - 1));
+          pref.begin("database", false);
+          pref.putUChar("doneToday", doneForToday);
+          pref.end();
+        }
         activeAutoRunPeriod = 0;
+        pixels.setPixelColor(0, pixels.Color(255, 165, 0));
+        pixels.show();
+        while (digitalRead(BUTTON) == 1)
+        {
+          delay(10);
+          yield();
+        }
         pixels.setPixelColor(0, pixels.Color(0, 0, 0));
         pixels.show();
         return;
@@ -3480,7 +3494,7 @@ void handlePumpCompletion(byte code)
 
   display.setCursor(0, 25);
   display.print("Time Taken: ");
-  time_t totalRuntime = time(NULL) - pumpStartTime;
+  time_t totalRuntime = pumpStartTime == 0 ? 0 : time(NULL) - pumpStartTime;
   display.print(formatElapsedTime(totalRuntime));
   display.display();
   if (code == ALERT_TANK_FULL && activeAutoRunPeriod >= 1 && activeAutoRunPeriod <= 3)
@@ -3501,7 +3515,8 @@ void handlePumpCompletion(byte code)
     }
     else
       percEnd = tankLevelPerc();
-    sumAmp /= countAmp;
+    if (countAmp > 0)
+      sumAmp /= countAmp;
 
     if (totalRuntime < 180) // don't log if pump ran less than 3 minutes
       yield();
