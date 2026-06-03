@@ -149,8 +149,17 @@ String errorCodeMessage[] = {"USR INTRPT", "TANK FULL", "HIGH AMPERE", "LOW AMPE
 // time and timer related variables
 byte timeHour, timeMinute;
 time_t pumpStartTime = 0; // timestamp when pump starts (for elapsed time calculation)
-int onTime = 1230, offTime = 1330, lastDay;
-bool doneForToday, autoRun;
+int autoRunTimes[3][2] = {
+    {615, 730},
+    {1229, 1330},
+    {1615, 1715}};
+const char *autoRunTimeKeys[3][2] = {
+    {"onTime1", "offTime1"},
+    {"onTime2", "offTime2"},
+    {"onTime3", "offTime3"}};
+int lastDay;
+byte doneForToday = 0, activeAutoRunPeriod = 0;
+bool autoRun;
 String dateAndTime, currTime;
 // for holding water level (in %)
 byte holdData = 0;
@@ -328,12 +337,19 @@ void setup(void)
     pref.putBool("useWifi", true);
   if (!pref.isKey("apiKey"))
     pref.putString("apiKey", "");
-  if (!pref.isKey("doneForToday"))
-    pref.putBool("doneForToday", false);
+  if (!pref.isKey("doneToday"))
+    pref.putUChar("doneToday", 0);
   if (!pref.isKey("lastDay"))
     pref.putInt("lastDay", 0);
   if (!pref.isKey("autoRun"))
     pref.putBool("autoRun", false);
+  for (byte i = 0; i < 3; i++)
+  {
+    if (!pref.isKey(autoRunTimeKeys[i][0]))
+      pref.putInt(autoRunTimeKeys[i][0], autoRunTimes[i][0]);
+    if (!pref.isKey(autoRunTimeKeys[i][1]))
+      pref.putInt(autoRunTimeKeys[i][1], autoRunTimes[i][1]);
+  }
 
   tankLow = pref.getInt("tankLow", 0);
   tankFull = pref.getInt("tankFull", 0);
@@ -344,9 +360,14 @@ void setup(void)
   useFloat = pref.getBool("useFloat", false);
   useWifi = pref.getBool("useWifi", true);
   apiKey = pref.getString("apiKey", "");
-  doneForToday = pref.getBool("doneForToday", false);
+  doneForToday = pref.getUChar("doneToday", 0);
   lastDay = pref.getInt("lastDay", 0);
   autoRun = pref.getBool("autoRun", false);
+  for (byte i = 0; i < 3; i++)
+  {
+    autoRunTimes[i][0] = pref.getInt(autoRunTimeKeys[i][0], autoRunTimes[i][0]);
+    autoRunTimes[i][1] = pref.getInt(autoRunTimeKeys[i][1], autoRunTimes[i][1]);
+  }
 
   if (!rtc.begin())
   {
@@ -387,8 +408,9 @@ void setup(void)
     { // if today is a different day, reset "doneForToday"
       lastDay = now.day();
       pref.putInt("lastDay", lastDay);
-      pref.putBool("doneForToday", false);
-      doneForToday = false;
+      pref.putUChar("doneToday", 0);
+      doneForToday = 0;
+      activeAutoRunPeriod = 0;
     }
   }
 
@@ -647,6 +669,17 @@ void loop2(void *pvParameters)
       dateAndTime = now.timestamp(DateTime::TIMESTAMP_FULL);
 
       currTime = now.timestamp(DateTime::TIMESTAMP_TIME);
+
+      if (autoRun && lastDay != now.day())
+      {
+        lastDay = now.day();
+        doneForToday = 0;
+        activeAutoRunPeriod = 0;
+        pref.begin("database", false);
+        pref.putInt("lastDay", lastDay);
+        pref.putUChar("doneToday", doneForToday);
+        pref.end();
+      }
     }
 
     // =========================
@@ -668,12 +701,18 @@ void loop2(void *pvParameters)
     // Automatic schedule
     // =========================
 
-    if (autoRun && !doneForToday && !isPumpRunning && raiseAlert == 0)
+    if (autoRun && !isPumpRunning && raiseAlert == 0)
     {
-      if (checkTimeFor(onTime, offTime))
+      for (byte i = 0; i < 3; i++)
       {
-        raiseAlert = 99;
-        doneForToday = true; // this will trigger auto start in the main loop and prevent multiple auto starts in the same day
+        byte autoRunDoneFlag = 1 << i;
+        if ((doneForToday & autoRunDoneFlag) == 0 &&
+            checkTimeFor(autoRunTimes[i][0], autoRunTimes[i][1]))
+        {
+          activeAutoRunPeriod = i + 1;
+          raiseAlert = ALERT_AUTOSTART;
+          break;
+        }
       }
     }
     vTaskDelay(pdMS_TO_TICKS(10));
@@ -720,6 +759,18 @@ void loop(void)
       display.setCursor(5, 40);
       display.print("RESTART NOW");
       display.display();
+
+      pumpStop();
+      digitalWrite(BUZZER_PIN, LOW);
+      server.end();
+      pref.end();
+      WiFi.disconnect(true);
+      WiFi.softAPdisconnect(true);
+      WiFi.mode(WIFI_OFF);
+      LittleFS.end();
+      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+      pixels.show();
+
       delay(3000);
       ESP.restart();
     }
@@ -855,170 +906,98 @@ void pumpRunSequence(bool flag)
   byte count = 0, option = 1;
   while (true)
   {
-    if (isPumpRunning)
+    bool stopMode = isPumpRunning;
+
+    display.clearDisplay();
+    display.setTextColor(SH110X_WHITE);
+    display.setTextSize(1);
+    display.setFont(NULL);
+    display.setCursor(30, 10);
+    display.println(stopMode ? "STOP PUMP?" : "START PUMP?");
+
+    if (option == 1)
     {
-      display.clearDisplay();
+      display.setCursor(20, 40);
+      display.print("YES");
+      display.setCursor(90, 40);
+      display.fillRect(88, 39, 15, 10, 1);
+      display.setTextColor(SH110X_BLACK, SH110X_WHITE);
+      display.print("NO");
       display.setTextColor(SH110X_WHITE);
-      display.setTextSize(1);
-      display.setFont(NULL);
-      display.setCursor(30, 10);
-      display.println("STOP PUMP?");
-      // buttons
-      if (option == 1)
-      {
-        display.setCursor(20, 40);
-        display.print("YES");
-        display.setCursor(90, 40);
-        display.fillRect(88, 39, 15, 10, 1);
-        display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-        display.print("NO");
-        display.setTextColor(SH110X_WHITE);
-      }
-      else
-      {
-        display.setCursor(20, 40);
-        display.fillRect(18, 39, 21, 10, 1);
-        display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-        display.print("YES");
-        display.setTextColor(SH110X_WHITE);
-        display.setCursor(90, 40);
-        display.print("NO");
-      }
-
-      if (digitalRead(BUTTON) == 1)
-      {
-        while (digitalRead(BUTTON) == 1)
-        {
-          count++;
-          if (count >= 1 && count <= 8)
-          {
-            blinkOrange(1, 20);
-          }
-          else
-          {
-            blinkOrange(0, 150);
-            delay(100);
-          }
-          delay(50);
-        }
-
-        pixels.setBrightness(20);
-        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-        pixels.show();
-
-        if (count >= 1 && count <= 8)
-        {
-          option++;
-          if (option > 2)
-            option = 1;
-        }
-        else
-        {
-          if (option == 1)
-            break;
-          else if (option == 2)
-          {
-            if (isPumpRunning)
-            { // check if pump is running
-              pumpStop();
-              handlePumpCompletion(0); // raise user interrupt error
-            }
-            break;
-          }
-        }
-      }
-      count = 0;
-      display.display();
     }
     else
     {
-      display.clearDisplay();
+      display.setCursor(20, 40);
+      display.fillRect(18, 39, 21, 10, 1);
+      display.setTextColor(SH110X_BLACK, SH110X_WHITE);
+      display.print("YES");
       display.setTextColor(SH110X_WHITE);
-      display.setTextSize(1);
-      display.setFont(NULL);
-      display.setCursor(30, 10);
-      display.println("START PUMP?");
-      // buttons
-      if (option == 1)
+      display.setCursor(90, 40);
+      display.print("NO");
+    }
+
+    if ((!stopMode && flag) || digitalRead(BUTTON) == 1)
+    {
+      while (digitalRead(BUTTON) == 1)
       {
-        display.setCursor(20, 40);
-        display.print("YES");
-        display.setCursor(90, 40);
-        display.fillRect(88, 39, 15, 10, 1);
-        display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-        display.print("NO");
-        display.setTextColor(SH110X_WHITE);
-      }
-      else
-      {
-        display.setCursor(20, 40);
-        display.fillRect(18, 39, 21, 10, 1);
-        display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-        display.print("YES");
-        display.setTextColor(SH110X_WHITE);
-        display.setCursor(90, 40);
-        display.print("NO");
-      }
-
-      if (flag || digitalRead(BUTTON) == 1)
-      {
-        while (digitalRead(BUTTON) == 1)
-        {
-          count++;
-          if (count >= 1 && count <= 8)
-          {
-            blinkOrange(1, 20);
-          }
-          else
-          {
-            blinkOrange(0, 150);
-            delay(100);
-          }
-          delay(50);
-        }
-
-        if (flag)
-        { // for running in auto mode
-          count = 50;
-          option = 2;
-        }
-
-        pixels.setBrightness(20);
-        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-        pixels.show();
-
+        count++;
         if (count >= 1 && count <= 8)
         {
-          option++;
-          if (option > 2)
-            option = 1;
+          blinkOrange(1, 20);
         }
         else
         {
-          if (option == 1)
-            break; // NO
-          else if (option == 2)
-          { // YES
-            byte errorCode = monitorPumpSafety();
-            if (errorCode <= 1) // check if there is any error
-            {
-              pumpStart();
-              pixels.setPixelColor(0, pixels.Color(0, 255, 255));
-              pixels.show();
-              pumpOnDelay();
-              break;
-            }
-            else
-            {
-              handlePumpCompletion(errorCode); // raise error
-              break;
-            }
-          }
+          blinkOrange(0, 150);
+          delay(100);
         }
+        delay(50);
       }
-      count = 0;
-      display.display();
+
+      if (flag && !stopMode)
+      {
+        count = 50;
+        option = 2;
+      }
+
+      pixels.setBrightness(20);
+      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+      pixels.show();
+
+      if (count >= 1 && count <= 8)
+      {
+        option++;
+        if (option > 2)
+          option = 1;
+      }
+      else
+      {
+        if (option == 1)
+          break; // NO
+
+        if (stopMode)
+        {
+          pumpStop();
+          handlePumpCompletion(1); // raise user interrupt error
+          break;
+        }
+
+        byte errorCode = monitorPumpSafety();
+        if (errorCode <= 1) // check if there is any error
+        {
+          pumpStart();
+          pixels.setPixelColor(0, pixels.Color(0, 255, 255));
+          pixels.show();
+          pumpOnDelay();
+        }
+        else
+        {
+          handlePumpCompletion(errorCode); // raise error
+        }
+        break;
+      }
     }
+    count = 0;
+    display.display();
   }
 }
 
@@ -1075,8 +1054,7 @@ String formatElapsedTime(time_t elapsedSeconds)
  */
 void pumpOnDelay()
 {
-  byte i = WAIT_AFTER_PUMP_ON;
-  while (i > 0)
+  for (byte secondsLeft = WAIT_AFTER_PUMP_ON; secondsLeft > 0; secondsLeft--)
   {
     display.clearDisplay();
     display.setTextColor(SH110X_WHITE);
@@ -1085,13 +1063,16 @@ void pumpOnDelay()
     display.setCursor(32, 10);
     display.println("PLEASE WAIT");
     display.setCursor(62, 35);
-    display.print(i);
+    display.print(secondsLeft);
     display.display();
-    delay(1000);
-    yield();
-    i--;
+
+    uint32_t secondStartedAt = millis();
+    while (millis() - secondStartedAt < 1000)
+    {
+      delay(10);
+      yield();
+    }
   }
-  return;
 }
 
 /**
@@ -1103,8 +1084,7 @@ void pumpOnDelay()
 void runPumpAuto()
 {
   raiseAlert = 0;
-  byte i = 10;
-  while (i > 0 && isPumpRunning == false)
+  for (byte secondsLeft = 10; secondsLeft > 0 && !isPumpRunning; secondsLeft--)
   {
     display.clearDisplay();
     display.setTextColor(SH110X_WHITE);
@@ -1115,23 +1095,29 @@ void runPumpAuto()
     display.setCursor(5, 25);
     display.print("PRESS BUTTON TO STOP");
     display.setCursor(62, 45);
-    display.print(i);
+    display.print(secondsLeft);
     display.display();
+
     pixels.setBrightness(250);
     pixels.setPixelColor(0, pixels.Color(0, 0, 255));
     pixels.show();
-    delay(1000);
+
+    uint32_t secondStartedAt = millis();
+    while (millis() - secondStartedAt < 1000)
+    {
+      if (digitalRead(BUTTON) == 1)
+      {
+        activeAutoRunPeriod = 0;
+        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+        pixels.show();
+        return;
+      }
+      delay(10);
+      yield();
+    }
+
     pixels.setPixelColor(0, pixels.Color(0, 0, 0));
     pixels.show();
-    yield();
-    i--;
-    bool count = false;
-    if (digitalRead(BUTTON) == 1)
-    {
-      count = true;
-    }
-    if (count)
-      return;
   }
   pumpRunSequence(true);
 }
@@ -1373,10 +1359,7 @@ void vitals()
   }
 }
 
-/*main container function with 1-button system, 1 short click for changing
-menu items, 1 long click for selecting the highlighted option
-(same for throughout the program)
-*/
+/// ========================= MENU SYSTEM =========================
 void menu(void)
 {
   delay(100);
@@ -3455,8 +3438,19 @@ void totalReset()
           pref.putBool("useUltrasonic", false);
           pref.putBool("useSensors", false);
           pref.putBool("useFloat", false);
-          pref.putBool("useWifi", true);
-
+          pref.putBool("useWifi", false);
+          pref.putUChar("doneToday", 0);
+          int defaultAutoRunTimes[3][2] = {
+              {1230, 1330},
+              {1530, 1630},
+              {1830, 1930}};
+          for (byte i = 0; i < 3; i++)
+          {
+            autoRunTimes[i][0] = defaultAutoRunTimes[i][0];
+            autoRunTimes[i][1] = defaultAutoRunTimes[i][1];
+            pref.putInt(autoRunTimeKeys[i][0], defaultAutoRunTimes[i][0]);
+            pref.putInt(autoRunTimeKeys[i][1], defaultAutoRunTimes[i][1]);
+          }
           pref.end();
           resetFlag = true;
         }
@@ -3483,27 +3477,33 @@ void handlePumpCompletion(byte code)
   display.setCursor(0, 10);
   display.print("Msg: ");
   display.print(errorCodeMessage[code - 1]);
-  // Print how much time it took
+
   display.setCursor(0, 25);
   display.print("Time Taken: ");
   time_t totalRuntime = time(NULL) - pumpStartTime;
   display.print(formatElapsedTime(totalRuntime));
   display.display();
+  if (code == ALERT_TANK_FULL && activeAutoRunPeriod >= 1 && activeAutoRunPeriod <= 3)
+  {
+    doneForToday |= (1 << (activeAutoRunPeriod - 1));
+    pref.begin("database", false);
+    pref.putUChar("doneToday", doneForToday);
+    pref.end();
+    activeAutoRunPeriod = 0;
+  }
+
   if (useWifi)
   {
     endTime = currTime;
-    if (code == 2)
+    if (code == ALERT_TANK_FULL)
     {
       percEnd = 100;
-      pref.begin("database", false);
-      pref.putBool("doneForToday", true); // makes sure that it is done for today, hence no more auto run
-      pref.end();
     }
     else
       percEnd = tankLevelPerc();
     sumAmp /= countAmp;
 
-    if (totalRuntime < 240) // don't log if pump ran less than 4 minutes
+    if (totalRuntime < 180) // don't log if pump ran less than 3 minutes
       yield();
     else
       pumpLog(errorCodeMessage[code - 1]);
@@ -3679,7 +3679,7 @@ void sysWatcher()
   }
 }
 
-// WIFI MANAGER HELPING FUNCTIONS
+// Displays instructions on the OLED for connecting to the WiFi AP created by the device, providing the SSID and password for access.
 void wifiManagerInfoPrint()
 {
   display.clearDisplay();
@@ -3700,6 +3700,7 @@ void wifiManagerInfoPrint()
   display.display();
 }
 
+// Displays instructions on the OLED when a device connects to the WiFi AP, guiding the user to access the configuration page and enter their WiFi credentials.
 void WiFiEvent(WiFiEvent_t event)
 {
   if (event == ARDUINO_EVENT_WIFI_AP_STACONNECTED)
@@ -3721,6 +3722,9 @@ void WiFiEvent(WiFiEvent_t event)
   }
 }
 
+/*
+Logs the pump operation details to a server if WiFi is connected. The log includes the date and time, start and end times, percentage of tank filled at the beginning and end, elapsed time, average amperage, and any error messages.
+*/
 void pumpLog(String errM)
 {
   if (WiFi.status() == WL_CONNECTED)
@@ -3755,7 +3759,37 @@ void pumpLog(String errM)
   }
 }
 
-// checks if current time is between onTime and offTime, if yes returns true else returns false. 24 Hour mode ONLY
+/**
+ * @brief Checks whether the current RTC time is inside the configured auto-run window.
+ *
+ * The schedule values must be provided in 24-hour HHMM integer format.
+ * For example:
+ * - 1230 means 12:30 PM
+ * - 1835 means 6:35 PM
+ * - 45 means 00:45 AM
+ *
+ * The function reads the already-updated global RTC fields `timeHour` and
+ * `timeMinute`, converts them to the same HHMM format, and compares that
+ * value against the supplied start and stop times.
+ *
+ * Two schedule shapes are supported:
+ * - Same-day window: `offTime > onTime`
+ *   Example: 1230 to 1330 matches times after 12:30 and before 13:30.
+ *
+ * - Overnight window: `offTime <= onTime`
+ *   Example: 2230 to 0630 matches times after 22:30 or before 06:30.
+ *
+ * Boundary behavior is strict: the exact `onTime` and exact `offTime` values
+ * return false. A time must be greater than `onTime` and less than `offTime`
+ * for same-day windows, or fall on either side of the midnight-spanning range
+ * for overnight windows.
+ *
+ * @param onTime Start time of the schedule window in 24-hour HHMM format.
+ * @param offTime End time of the schedule window in 24-hour HHMM format.
+ * @return true when the current RTC time is inside the schedule window.
+ * @return false when the current RTC time is outside the schedule window or
+ *         exactly equal to either boundary.
+ */
 bool checkTimeFor(int onTime, int offTime)
 {
   int h = timeHour;
