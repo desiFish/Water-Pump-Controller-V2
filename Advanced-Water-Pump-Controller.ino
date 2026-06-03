@@ -590,7 +590,7 @@ void loop2(void *pvParameters)
     // =========================
     // Pump safety monitoring
     // =========================
-
+    bool isInStartupPeriod;
     if (isPumpRunning)
     {
       // Track pump start time to allow initial current stabilization
@@ -600,7 +600,7 @@ void loop2(void *pvParameters)
       }
 
       uint32_t elapsedSincePumpStart = currentMillis - pumpStartMillis;
-      bool isInStartupPeriod = (elapsedSincePumpStart < (WAIT_AFTER_PUMP_ON * 1000));
+      isInStartupPeriod = (elapsedSincePumpStart < (WAIT_AFTER_PUMP_ON * 1000));
 
       byte err = monitorPumpSafety();
 
