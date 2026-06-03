@@ -151,7 +151,7 @@ byte timeHour, timeMinute;
 time_t pumpStartTime = 0; // timestamp when pump starts (for elapsed time calculation)
 int onTime = 1230, offTime = 1330, lastDay;
 bool doneForToday, autoRun;
-String dateAndTime, onlyTime;
+String dateAndTime, currTime;
 // for holding water level (in %)
 byte holdData = 0;
 // global error tracking variable, Core 0 updates it
@@ -569,6 +569,7 @@ void loop2(void *pvParameters)
 {
   static uint32_t lastRtcUpdate = 0;
   static uint32_t lastAmpSample = 0;
+  static uint32_t pumpStartMillis = 0;
 
   for (;;)
   {
@@ -592,24 +593,42 @@ void loop2(void *pvParameters)
 
     if (isPumpRunning)
     {
+      // Track pump start time to allow initial current stabilization
+      if (pumpStartMillis == 0)
+      {
+        pumpStartMillis = currentMillis;
+      }
+
+      uint32_t elapsedSincePumpStart = currentMillis - pumpStartMillis;
+      bool isInStartupPeriod = (elapsedSincePumpStart < (WAIT_AFTER_PUMP_ON * 1000));
+
       byte err = monitorPumpSafety();
 
       // Immediate protection
+      // Skip ampere-based errors during startup period to avoid inrush current shutdown
       if (err >= ALERT_TANK_FULL &&
           err <= ALERT_UNDERCURRENT)
       {
-        TURN_OFF_RELAY;
-        isPumpRunning = false;
+        if (!isInStartupPeriod || err == ALERT_TANK_FULL)
+        {
+          pumpStop();
+        }
       }
 
       // Notify UI
-      if (err >= ALERT_TANK_FULL && raiseAlert == 0)
+      if (err >= ALERT_TANK_FULL && raiseAlert == STATUS_OK)
       {
-        raiseAlert = err;
+        if (!isInStartupPeriod || err == ALERT_TANK_FULL) // only raise alert if not in startup period or if it's a tank full alert
+          raiseAlert = err;
       }
 
       Serial.print("PUMP RUN ERRORCODE: ");
       Serial.println(err);
+    }
+    else
+    {
+      // Reset pump start timer when pump stops
+      pumpStartMillis = 0;
     }
 
     // =========================
@@ -627,14 +646,14 @@ void loop2(void *pvParameters)
 
       dateAndTime = now.timestamp(DateTime::TIMESTAMP_FULL);
 
-      onlyTime = now.timestamp(DateTime::TIMESTAMP_TIME);
+      currTime = now.timestamp(DateTime::TIMESTAMP_TIME);
     }
 
     // =========================
     // Current averaging
     // =========================
 
-    if (isPumpRunning)
+    if (isPumpRunning && useSensors && useWifi && !isInStartupPeriod) // only sample current for averaging if pump is running, sensors are enabled, wifi is enabled (for logging) and not in startup period
     {
       if (currentMillis - lastAmpSample >= 1000)
       {
@@ -654,7 +673,7 @@ void loop2(void *pvParameters)
       if (checkTimeFor(onTime, offTime))
       {
         raiseAlert = 99;
-        doneForToday = true;
+        doneForToday = true; // this will trigger auto start in the main loop and prevent multiple auto starts in the same day
       }
     }
     vTaskDelay(pdMS_TO_TICKS(10));
@@ -682,7 +701,7 @@ void loop(void)
   if (raiseAlert >= ALERT_TANK_FULL &&
       raiseAlert <= ALERT_UNDERCURRENT)
   {
-    errorMsg(raiseAlert, true);
+    handlePumpCompletion(raiseAlert);
     raiseAlert = STATUS_OK;
   }
 
@@ -717,19 +736,13 @@ void loop(void)
       display.setFont(NULL);
 
       display.setCursor(5, 1);
-      display.print(onlyTime);
+      display.print(currTime);
 
       display.setCursor(60, 1);
       if (isPumpRunning)
       {
         display.println("PUMP: ON");
         pixels.setPixelColor(0, pixels.Color(128, 0, 128));
-        pixels.show();
-      }
-      else if (!doneForToday)
-      {
-        display.println("PUMP: OFF");
-        pixels.setPixelColor(0, pixels.Color(255, 255, 255));
         pixels.show();
       }
       else
@@ -779,6 +792,53 @@ void loop(void)
     else
       menu();
   }
+}
+
+/**
+ * @brief Centralized pump start control
+ *
+ * This function initializes all necessary variables and turns on the pump relay.
+ * It should be called whenever the pump needs to be started.
+ */
+void pumpStart()
+{
+  isPumpRunning = true;
+  TURN_ON_RELAY;
+  pumpStartTime = time(NULL); // Set current time as pump start time
+  holdData = 0;               // Reset tank level display smoothing
+  startTime = currTime;
+  percBegin = tankLevelPerc();
+  if (useWifi)
+  {
+    countAmp = 0; // Reset ampere sample count
+    sumAmp = 0;   // Reset ampere sum
+  }
+
+  Serial.println("PUMP STARTED");
+}
+
+/**
+ * @brief Centralized pump stop control
+ *
+ * This function turns off the pump relay and resets all related tracking variables.
+ * It should be called whenever the pump needs to be stopped.
+ */
+void pumpStop()
+{
+  TURN_OFF_RELAY;
+  isPumpRunning = false;
+  Serial.println("PUMP STOPPED");
+}
+
+/**
+ * @brief Resets the pump operation timer
+ *
+ * This function clears the pump start time, allowing for a fresh elapsed time calculation
+ * on the next pump start. It should be called whenever the pump operation needs to be reset.
+ */
+void resetTimer()
+{
+  pumpStartTime = 0;
 }
 
 /**
@@ -860,16 +920,8 @@ void pumpRunSequence(bool flag)
           {
             if (isPumpRunning)
             { // check if pump is running
-              isPumpRunning = false;
-              TURN_OFF_RELAY;
-              delay(200);
-              if (useWifi)
-              {
-                endTime = onlyTime;
-                percEnd = tankLevelPerc();
-                pumpLog(errorCodeMessage[0]);
-              }
-              timerReset();
+              pumpStop();
+              handlePumpCompletion(0); // raise user interrupt error
             }
             break;
           }
@@ -948,27 +1000,17 @@ void pumpRunSequence(bool flag)
           else if (option == 2)
           { // YES
             byte errorCode = monitorPumpSafety();
-            if (errorCode == 0 || errorCode == 1) // check if there is any error
+            if (errorCode <= 1) // check if there is any error
             {
-              isPumpRunning = true;
-              TURN_ON_RELAY;
-              pumpStartTime = time(NULL); // Record pump start time
-              if (useWifi)
-              {
-                startTime = onlyTime;
-                percBegin = tankLevelPerc();
-              }
+              pumpStart();
               pixels.setPixelColor(0, pixels.Color(0, 255, 255));
               pixels.show();
               pumpOnDelay();
-              holdData = 0;
-              countAmp = 0;
-              sumAmp = 0;
               break;
             }
             else
             {
-              errorMsg(errorCode, false); // raise error but do not log
+              handlePumpCompletion(errorCode); // raise error
               break;
             }
           }
@@ -1006,6 +1048,7 @@ byte monitorPumpSafety()
 
   return STATUS_OK;
 }
+
 /**
  * @brief Format elapsed time as HH:MM:SS string
  * @param elapsedSeconds Total elapsed seconds since pump started
@@ -1024,11 +1067,12 @@ String formatElapsedTime(time_t elapsedSeconds)
   return h + ":" + m + ":" + s;
 }
 
-void timerReset()
-{
-  pumpStartTime = 0; // Reset pump start time
-}
-
+/**
+ * @brief Displays a countdown after pump starts to allow current stabilization
+ *
+ * This function shows a countdown on the OLED display for a predefined duration
+ * after the pump is turned on, allowing the current to stabilize before safety checks.
+ */
 void pumpOnDelay()
 {
   byte i = WAIT_AFTER_PUMP_ON;
@@ -1050,6 +1094,12 @@ void pumpOnDelay()
   return;
 }
 
+/**
+ * @brief Automatically starts the pump after a countdown, allowing user to cancel
+ *
+ * This function initiates a 10-second countdown before automatically starting the pump.
+ * During the countdown, the user can press the button to cancel the auto-start.
+ */
 void runPumpAuto()
 {
   raiseAlert = 0;
@@ -3416,12 +3466,15 @@ void totalReset()
   }
 }
 
-/*prints various error messages on screen
-\n tank full: err = 2
-\n high ampere: err = 3
-\n low ampere: err = 4
+/*
+Handles the completion of the pump operation, displaying appropriate messages based on the error code received.
+* Error codes:
+* user interruption: err = 1
+* tank full: err = 2
+* high ampere: err = 3
+* low ampere: err = 4
 */
-void errorMsg(byte code, bool sheetLogger)
+void handlePumpCompletion(byte code)
 {
   display.clearDisplay();
   display.setTextColor(SH110X_WHITE);
@@ -3436,9 +3489,9 @@ void errorMsg(byte code, bool sheetLogger)
   time_t totalRuntime = time(NULL) - pumpStartTime;
   display.print(formatElapsedTime(totalRuntime));
   display.display();
-  if (useWifi && sheetLogger)
+  if (useWifi)
   {
-    endTime = onlyTime;
+    endTime = currTime;
     if (code == 2)
     {
       percEnd = 100;
@@ -3448,17 +3501,17 @@ void errorMsg(byte code, bool sheetLogger)
     }
     else
       percEnd = tankLevelPerc();
-    sumAmp += liveAmp;
-    countAmp++;
     sumAmp /= countAmp;
-    // Check if pump ran for at least 2 minutes before logging
-    time_t totalRuntime = time(NULL) - pumpStartTime;
-    if (totalRuntime < 120) // don't log if total run time is less than 2 minutes
+
+    if (totalRuntime < 240) // don't log if pump ran less than 4 minutes
       yield();
     else
       pumpLog(errorCodeMessage[code - 1]);
   }
-  timerReset();
+  countAmp = 0; // Reset ampere sample count
+  sumAmp = 0;   // Reset ampere sum
+  resetTimer();
+
   pixels.setBrightness(250);
   if (code == 2)
     pixels.setPixelColor(0, pixels.Color(0, 0, 255));
@@ -3502,7 +3555,7 @@ void errorMsg(byte code, bool sheetLogger)
       delay(100);
       pixels.setPixelColor(0, pixels.Color(0, 0, 0));
       pixels.show();
-      return;
+      break;
     }
   }
 }
