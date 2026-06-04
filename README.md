@@ -4,13 +4,13 @@
 
   <!-- Badges -->
   <p>
-    <img src="https://img.shields.io/github/v/release/KamadoTanjiro-beep/Advanced-Water-Pump-Controller?include_prereleases&style=flat-square" alt="Release">
-    <img src="https://img.shields.io/github/license/KamadoTanjiro-beep/Advanced-Water-Pump-Controller?style=flat-square" alt="License">
-    <img src="https://img.shields.io/github/languages/top/KamadoTanjiro-beep/Advanced-Water-Pump-Controller?style=flat-square" alt="Top Language">
-    <img src="https://img.shields.io/github/issues/KamadoTanjiro-beep/Advanced-Water-Pump-Controller?style=flat-square" alt="Issues">
-    <img src="https://img.shields.io/github/last-commit/KamadoTanjiro-beep/Advanced-Water-Pump-Controller?style=flat-square" alt="Last Commit">
-    <img src="https://img.shields.io/github/repo-size/KamadoTanjiro-beep/Advanced-Water-Pump-Controller?style=flat-square" alt="Repo Size">
-    <img src="https://img.shields.io/github/stars/KamadoTanjiro-beep/Advanced-Water-Pump-Controller?style=flat-square" alt="Stars">
+    <img src="https://img.shields.io/github/v/release/desiFish/Advanced-Water-Pump-Controller?include_prereleases&style=flat-square" alt="Release">
+    <img src="https://img.shields.io/github/license/desiFish/Advanced-Water-Pump-Controller?style=flat-square" alt="License">
+    <img src="https://img.shields.io/github/languages/top/desiFish/Advanced-Water-Pump-Controller?style=flat-square" alt="Top Language">
+    <img src="https://img.shields.io/github/issues/desiFish/Advanced-Water-Pump-Controller?style=flat-square" alt="Issues">
+    <img src="https://img.shields.io/github/last-commit/desiFish/Advanced-Water-Pump-Controller?style=flat-square" alt="Last Commit">
+    <img src="https://img.shields.io/github/repo-size/desiFish/Advanced-Water-Pump-Controller?style=flat-square" alt="Repo Size">
+    <img src="https://img.shields.io/github/stars/desiFish/Advanced-Water-Pump-Controller?style=flat-square" alt="Stars">
     <img src="https://img.shields.io/badge/ESP32-Ready-blue?style=flat-square" alt="ESP32 Ready">
     <img src="https://img.shields.io/badge/Arduino-Compatible-green?style=flat-square" alt="Arduino Compatible">
   </p>
