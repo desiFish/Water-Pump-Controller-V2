@@ -4,15 +4,14 @@
 
   <!-- Badges -->
   <p>
-    <img src="https://img.shields.io/github/v/release/desiFish/Water-Pump-Controller-V2?include_prereleases&style=flat-square" alt="Release">
-    <img src="https://img.shields.io/github/license/desiFish/Water-Pump-Controller-V2?style=flat-square" alt="License">
-    <img src="https://img.shields.io/github/languages/top/desiFish/Water-Pump-Controller-V2?style=flat-square" alt="Top Language">
-    <img src="https://img.shields.io/github/issues/desiFish/Water-Pump-Controller-V2?style=flat-square" alt="Issues">
-    <img src="https://img.shields.io/github/last-commit/desiFish/Water-Pump-Controller-V2?style=flat-square" alt="Last Commit">
-    <img src="https://img.shields.io/github/repo-size/desiFish/Water-Pump-Controller-V2?style=flat-square" alt="Repo Size">
-    <img src="https://img.shields.io/github/stars/desiFish/Water-Pump-Controller-V2?style=flat-square" alt="Stars">
-    <img src="https://img.shields.io/badge/ESP32-Ready-blue?style=flat-square" alt="ESP32 Ready">
-    <img src="https://img.shields.io/badge/Arduino-Compatible-green?style=flat-square" alt="Arduino Compatible">
+    <img src="https://badgen.net/github/release/desiFish/Water-Pump-Controller-V2" alt="Release">
+    <img src="https://badgen.net/github/license/desiFish/Water-Pump-Controller-V2" alt="License">
+    <img src="https://badgen.net/badge/Language/C++/orange" alt="Language">
+    <img src="https://badgen.net/github/open-issues/desiFish/Water-Pump-Controller-V2" alt="Issues">
+    <img src="https://badgen.net/github/last-commit/desiFish/Water-Pump-Controller-V2" alt="Last Commit">
+    <img src="https://badgen.net/github/stars/desiFish/Water-Pump-Controller-V2" alt="Stars">
+    <img src="https://badgen.net/badge/ESP32/Ready/blue" alt="ESP32 Ready">
+    <img src="https://badgen.net/badge/Arduino/Compatible/green" alt="Arduino Compatible">
   </p>
 </div>
 
