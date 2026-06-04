@@ -58,6 +58,9 @@ NOT USING CURRENTLY--> ZMPT101B Voltage Sensor
 // Google Sheet Logging
 #include <HTTPClient.h>
 
+// JSON handling for API
+#include <ArduinoJson.h>
+
 EnergyMonitor emon1;
 
 // PIN CONFIGURATIONS
@@ -256,7 +259,7 @@ void onOTAEnd(bool success)
 // forward declaration
 void drawTankLevel(byte);
 void blinkOrange(byte, byte, int = 50);
-void autoTimeUpdate(bool = true);
+bool autoTimeUpdate();
 void pumpRunSequence(bool = false);
 
 enum PumpStatus : byte
@@ -373,32 +376,19 @@ void setup(void)
   {
     Serial.println("Couldn't find RTC");
     Serial.flush();
-    display.clearDisplay();
-    display.setTextColor(SH110X_WHITE);
-    display.setTextSize(1);
-    display.setFont(NULL);
-    display.setCursor(34, 10);
-    display.println("RTC FAILED");
-    display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-    display.setCursor(50, 41);
-    display.fillRect(47, 40, 29, 10, 1);
-    display.print("OKAY");
-    display.setTextColor(SH110X_WHITE);
-    display.display();
-
-    byte count = 0;
-    while (true)
+    // Show countdown from 5 to 1 then move on
+    for (int countdown = 5; countdown >= 1; countdown--)
     {
-      if (digitalRead(BUTTON) == 1)
-      {
-        while (digitalRead(BUTTON) == 1)
-        {
-          delay(150);
-          count++;
-        }
-        if (count >= 1)
-          break;
-      }
+      display.clearDisplay();
+      display.setTextColor(SH110X_WHITE);
+      display.setTextSize(1);
+      display.setFont(NULL);
+      display.setCursor(34, 10);
+      display.println("RTC FAILED");
+      display.setCursor(50, 41);
+      display.println(countdown);
+      display.display();
+      delay(1000);
     }
   }
   if (autoRun)
@@ -542,6 +532,198 @@ void setup(void)
                                                    "/update"
                                                    " on the above address."); });
 
+      // GET Settings API
+      server.on("/api/settings", HTTP_GET, [](AsyncWebServerRequest *request)
+                {
+          pref.begin("database", false);
+
+          DynamicJsonDocument doc(2048);
+
+          doc["tankLow"] = pref.getInt("tankLow", 0);
+          doc["tankFull"] = pref.getInt("tankFull", 0);
+
+          doc["ampLow"] = pref.getFloat("ampLow", 0);
+          doc["ampMax"] = pref.getFloat("ampMax", 0);
+
+          doc["useUltrasonic"] = pref.getBool("useUltrasonic", false);
+          doc["useSensors"] = pref.getBool("useSensors", false);
+          doc["useFloat"] = pref.getBool("useFloat", false);
+          doc["useWifi"] = pref.getBool("useWifi", true);
+
+          doc["autoRun"] = pref.getBool("autoRun", false);
+
+          doc["apiKey"] = pref.getString("apiKey", "");
+
+          doc["ssid"] = pref.getString("ssid", "");
+          doc["password"] = pref.getString("password", "");
+
+          doc["onTime1"] = pref.getInt("onTime1", 615);
+          doc["offTime1"] = pref.getInt("offTime1", 730);
+
+          doc["onTime2"] = pref.getInt("onTime2", 1229);
+          doc["offTime2"] = pref.getInt("offTime2", 1330);
+
+          doc["onTime3"] = pref.getInt("onTime3", 1615);
+          doc["offTime3"] = pref.getInt("offTime3", 1715);
+
+          String json;
+          serializeJson(doc, json);
+
+          pref.end();
+
+          request->send(200, "application/json", json); });
+
+      // POST Settings API
+      AsyncCallbackJsonWebHandler *handler =
+          new AsyncCallbackJsonWebHandler(
+              "/api/settings",
+              [](AsyncWebServerRequest *request, JsonVariant &json)
+              {
+                JsonObject data = json.as<JsonObject>();
+
+                // Log received data from browser
+                Serial.println("Settings received from browser:");
+                serializeJson(data, Serial);
+                Serial.println();
+
+                pref.begin("database", false);
+
+                pref.putInt("tankLow", data["tankLow"] | 0);
+                pref.putInt("tankFull", data["tankFull"] | 0);
+
+                pref.putFloat("ampLow", data["ampLow"] | 0.0);
+                pref.putFloat("ampMax", data["ampMax"] | 0.0);
+
+                pref.putBool("useUltrasonic", data["useUltrasonic"] | false);
+                pref.putBool("useSensors", data["useSensors"] | false);
+                pref.putBool("useFloat", data["useFloat"] | false);
+                pref.putBool("useWifi", data["useWifi"] | true);
+
+                pref.putBool("autoRun", data["autoRun"] | false);
+
+                pref.putString("apiKey", String((const char *)data["apiKey"]));
+
+                pref.putString("ssid", String((const char *)data["ssid"]));
+                pref.putString("password", String((const char *)data["password"]));
+
+                pref.putInt("onTime1", data["onTime1"] | 615);
+                pref.putInt("offTime1", data["offTime1"] | 730);
+
+                pref.putInt("onTime2", data["onTime2"] | 1229);
+                pref.putInt("offTime2", data["offTime2"] | 1330);
+
+                pref.putInt("onTime3", data["onTime3"] | 1615);
+                pref.putInt("offTime3", data["offTime3"] | 1715);
+
+                pref.end();
+
+                request->send(200, "text/plain", "Settings Saved");
+              });
+      server.addHandler(handler);
+
+      server.on("/api/live", HTTP_GET, [](AsyncWebServerRequest *request)
+                {
+    // Log live data request from browser
+    Serial.println("Live data requested from browser");
+
+    DynamicJsonDocument doc(1024);
+
+    doc["tankPercent"] = tankLevelPerc();
+    doc["ultrasonicDistance"] = liveTankLevel;
+    doc["liveAmp"] = liveAmp;
+
+    doc["floatSensor"] = floatSensor;
+    doc["pumpRunning"] = isPumpRunning;
+
+    doc["tankLow"] = tankLow;
+    doc["tankFull"] = tankFull;
+
+    doc["time"] = currTime;
+    doc["dateTime"] = dateAndTime;
+
+    // useful extra information
+    doc["wifiRSSI"] = WiFi.RSSI();
+    doc["wifiConnected"] = WiFi.status() == WL_CONNECTED;
+
+    String json;
+    serializeJson(doc, json);
+
+    Serial.println("Live data sent to browser:");
+    Serial.println(json);
+
+    request->send(200, "application/json", json); });
+
+      // Serve Settings HTML
+      server.on("/settings", HTTP_GET,
+                [](AsyncWebServerRequest *request)
+                {
+                  request->send(LittleFS, "/settings.html", "text/html");
+                });
+      server.on("/api/rtc/sync", HTTP_OPTIONS,
+                [](AsyncWebServerRequest *request)
+                {
+                  request->send(200);
+                });
+
+      AsyncCallbackJsonWebHandler *rtcHandler =
+          new AsyncCallbackJsonWebHandler(
+              "/api/rtc/sync",
+              [](AsyncWebServerRequest *request, JsonVariant &json)
+              {
+                JsonObject data = json.as<JsonObject>();
+
+                int year = data["year"];
+                int month = data["month"];
+                int day = data["day"];
+                int hour = data["hour"];
+                int minute = data["minute"];
+                int second = data["second"];
+
+                Serial.printf("Time received from browser: %04d-%02d-%02d %02d:%02d:%02d\n",
+                              year, month, day, hour, minute, second);
+
+                rtc.adjust(DateTime(
+                    year,
+                    month,
+                    day,
+                    hour,
+                    minute,
+                    second));
+
+                request->send(
+                    200,
+                    "text/plain",
+                    "Received by ESP32");
+              });
+      server.addHandler(rtcHandler);
+      server.on("/api/rtc/update", HTTP_POST,
+                [](AsyncWebServerRequest *request)
+                {
+                  bool success = autoTimeUpdate();
+
+                  if (success)
+                  {
+                    request->send(
+                        200,
+                        "text/plain",
+                        "RTC synchronized successfully");
+                  }
+                  else
+                  {
+                    request->send(
+                        500,
+                        "text/plain",
+                        "RTC synchronization failed");
+                  }
+                });
+
+      server.on("/api/restart", HTTP_POST,
+                [](AsyncWebServerRequest *request)
+                {
+                  resetFlag = true;
+                  request->send(200, "text/plain", "Device restarting...");
+                });
+
       ElegantOTA.begin(&server); // Start ElegantOTA
       // ElegantOTA callbacks
       ElegantOTA.onStart(onOTAStart);
@@ -557,7 +739,7 @@ void setup(void)
       display.println("Time");
       display.display();
       // RTC Update at startup
-      autoTimeUpdate(false);
+      autoTimeUpdate();
     }
   }
 
@@ -813,9 +995,9 @@ void loop(void)
 
   // long press to activate menu
   byte count = 0;
-  if (digitalRead(BUTTON) == 1)
+  if (digitalRead(BUTTON) == HIGH)
   {
-    while (digitalRead(BUTTON) == 1)
+    while (digitalRead(BUTTON) == HIGH)
     {
       count++;
       if (count >= 1 && count <= 30)
@@ -853,12 +1035,13 @@ void loop(void)
  */
 void pumpStart()
 {
+  percBegin = tankLevelPerc();
   isPumpRunning = true;
   TURN_ON_RELAY;
   pumpStartTime = time(NULL); // Set current time as pump start time
   holdData = 0;               // Reset tank level display smoothing
   startTime = currTime;
-  percBegin = tankLevelPerc();
+
   if (useWifi)
   {
     countAmp = 0; // Reset ampere sample count
@@ -1386,25 +1569,12 @@ void menu(void)
     display.setCursor(0, 0);
     display.println("MENU");
     display.drawLine(0, 8, 127, 8, 1);
-
-    if (option > 3)
-    {
-      display.setCursor(3, 13);
-      display.print("4. Reset");
-      display.setCursor(3, 27);
-      display.print("5. Exit");
-    }
-    else
-    {
-      display.setCursor(3, 13);
-      display.print("1. Sys Watcher");
-      display.setCursor(3, 27);
-      display.print("2. Data Limits");
-      display.setCursor(3, 41);
-      display.print("3. Configurations");
-      display.setCursor(3, 55);
-      display.print("4. Reset");
-    }
+    display.setCursor(3, 13);
+    display.print("1. Configurations");
+    display.setCursor(3, 27);
+    display.print("2. Reset Wifi");
+    display.setCursor(3, 41);
+    display.print("3. Exit");
 
     switch (option)
     {
@@ -1416,12 +1586,6 @@ void menu(void)
       break;
     case 3:
       display.drawRect(0, 38, 127, 13, 1);
-      break;
-    case 4:
-      display.drawRect(0, 10, 127, 13, 1);
-      break;
-    case 5:
-      display.drawRect(0, 24, 127, 13, 1);
       break;
     }
     display.display();
@@ -1450,20 +1614,16 @@ void menu(void)
       if (count >= 1 && count <= 6)
       {
         option++;
-        if (option > 5)
+        if (option > 3)
           option = 1;
       }
       else
       {
         if (option == 1)
-          sysWatcher();
-        else if (option == 2)
-          dataLimit();
-        else if (option == 3)
           configurations();
-        else if (option == 4)
-          totalReset();
-        else if (option == 5)
+        else if (option == 2)
+          resetWifi();
+        else if (option == 3)
           return;
       }
     }
@@ -1506,1085 +1666,14 @@ void blinkOrange(byte times, byte brightValue, int blinkDuration)
 }
 
 /**
- * @brief Manages the data limit settings menu
+ * @brief Displays the configuration menu for system settings
  *
- * This function provides a user interface for setting various data limits
- * such as ultrasonic sensor and current sensor thresholds.
- * It uses a single-button navigation system.
+ * This function presents a menu-driven interface on the OLED display allowing users to
+ * configure device settings such as WiFi connectivity. Users navigate through the menu
+ * options using the button input and can toggle WiFi on/off or return to the main menu.
+ * The function saves preference changes to persistent storage and triggers a device restart
+ * when WiFi settings are modified.
  */
-void dataLimit()
-{
-  byte count = 0, option = 1;
-  while (true)
-  {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setFont(NULL);
-    display.setCursor(0, 0);
-    display.println("Set Limits");
-    display.drawLine(0, 8, 127, 8, 1);
-
-    display.setCursor(3, 13);
-    display.print("1. Ultrasonic Sensor");
-    display.setCursor(3, 27);
-    display.print("2. Current Sensor");
-    display.setCursor(3, 41);
-    display.print("3. Exit");
-    switch (option)
-    {
-    case 1:
-      display.drawRect(0, 10, 127, 13, 1);
-      break;
-    case 2:
-      display.drawRect(0, 24, 127, 13, 1);
-      break;
-    case 3:
-      display.drawRect(0, 38, 127, 13, 1);
-      break;
-    }
-
-    display.display();
-
-    if (digitalRead(BUTTON) == 1)
-    {
-      while (digitalRead(BUTTON) == 1)
-      {
-        count++;
-        if (count >= 1 && count <= 6)
-        {
-          blinkOrange(1, 20, 50);
-        }
-        else
-        {
-          blinkOrange(0, 150, 0);
-          delay(100);
-        }
-        delay(50);
-      }
-
-      pixels.setBrightness(20);
-      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-      pixels.show();
-      if (count >= 1 && count <= 6)
-      {
-        option++;
-        if (option > 3)
-          option = 1;
-      }
-      else
-      {
-        if (option == 1)
-          ultraSonicValues();
-        else if (option == 2)
-          ampereValues();
-        else if (option == 3)
-          return;
-      }
-    }
-    count = 0;
-  }
-}
-
-/**
- * @brief Configures ultrasonic sensor values
- *
- * This function allows the user to set or adjust the ultrasonic sensor values
- * for tank level measurements. It provides options for using live values or
- * manually entering values for empty and full tank levels.
- *
- * @note This function uses persistent storage to save the configured values.
- */
-void ultraSonicValues()
-{
-  pref.begin("database", false);
-  byte count = 0, option = 1;
-  while (true)
-  {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setFont(NULL);
-    display.setCursor(0, 0);
-    display.println("Ultra-Sonic Sensor");
-    display.drawLine(0, 8, 127, 8, 1);
-
-    display.setCursor(3, 13);
-    display.print("1. Use live values");
-    display.setCursor(3, 27);
-    display.print("2. Use manual values");
-    display.setCursor(3, 41);
-    display.print("3. Exit");
-    switch (option)
-    {
-    case 1:
-      display.drawRect(0, 10, 127, 13, 1);
-      break;
-    case 2:
-      display.drawRect(0, 24, 127, 13, 1);
-      break;
-    case 3:
-      display.drawRect(0, 38, 127, 13, 1);
-      break;
-    }
-    display.display();
-
-    if (digitalRead(BUTTON) == 1)
-    {
-      while (digitalRead(BUTTON) == 1)
-      {
-        count++;
-        if (count >= 1 && count <= 6)
-        {
-          blinkOrange(1, 20, 50);
-        }
-        else
-        {
-          blinkOrange(0, 150, 0);
-          delay(100);
-        }
-        delay(50);
-      }
-
-      pixels.setBrightness(20);
-      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-      pixels.show();
-      if (count >= 1 && count <= 6)
-      {
-        option++;
-        if (option > 3)
-          option = 1;
-      }
-      else
-      {
-        if (option == 1)
-        {
-          byte count = 0, option = 1;
-          while (true)
-          {
-            int newValue = liveTankLevel; // fetch live ultra-sonic values
-            display.clearDisplay();
-            display.setTextColor(SH110X_WHITE);
-            display.setTextSize(1);
-            display.setFont(NULL);
-            display.setCursor(0, 0);
-            display.println("Ultra-Sonic: EMPTY");
-            display.drawLine(0, 8, 127, 8, 1);
-            display.setCursor(0, 15);
-            display.print("Old Value:");
-            display.print(String(tankLow) + " cm");
-            display.setCursor(0, 28);
-            display.print("New Value:");
-            display.print(String(newValue) + " cm");
-            // buttons
-            if (option == 1)
-            {
-              display.fillRect(20, 49, 27, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setTextColor(SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else
-            {
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.fillRect(63, 49, 45, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-              display.setTextColor(SH110X_WHITE);
-            }
-
-            if (digitalRead(BUTTON) == 1)
-            {
-              while (digitalRead(BUTTON) == 1)
-              {
-                count++;
-                if (count >= 1 && count <= 2)
-                {
-                  blinkOrange(1, 20);
-                }
-                else
-                {
-                  blinkOrange(0, 150);
-                  delay(100);
-                }
-                delay(50);
-              }
-
-              pixels.setBrightness(20);
-              pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-              pixels.show();
-              if (count >= 1 && count <= 2)
-              {
-                option++;
-                if (option > 2)
-                  option = 1;
-              }
-              else
-              {
-                if (option == 1)
-                {
-                  tankLow = newValue; // save tankLow value in preference
-                  pref.putInt("tankLow", tankLow);
-                  break;
-                }
-                else if (option == 2)
-                  break;
-              }
-            }
-            count = 0;
-            display.display();
-          }
-
-          display.clearDisplay();
-          display.display();
-          delay(300);
-
-          while (true)
-          {
-            int newValue = liveTankLevel; // fetch live ultra-sonic values
-            display.clearDisplay();
-            display.setTextColor(SH110X_WHITE);
-            display.setTextSize(1);
-            display.setFont(NULL);
-            display.setCursor(0, 0);
-            display.println("Ultra-Sonic: FULL");
-            display.drawLine(0, 8, 127, 8, 1);
-            display.setCursor(0, 15);
-            display.print("Old Value:");
-            display.print(String(tankFull) + " cm");
-            display.setCursor(0, 28);
-            display.print("New Value:");
-            display.print(String(newValue) + " cm");
-            // buttons
-            if (option == 1)
-            {
-              display.fillRect(20, 49, 27, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setTextColor(SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else
-            {
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.fillRect(63, 49, 45, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-              display.setTextColor(SH110X_WHITE);
-            }
-
-            if (digitalRead(BUTTON) == 1)
-            {
-              while (digitalRead(BUTTON) == 1)
-              {
-                count++;
-                if (count >= 1 && count <= 2)
-                {
-                  blinkOrange(1, 20);
-                }
-                else
-                {
-                  blinkOrange(0, 150);
-                  delay(100);
-                }
-                delay(50);
-              }
-
-              pixels.setBrightness(20);
-              pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-              pixels.show();
-              if (count >= 1 && count <= 2)
-              {
-                option++;
-                if (option > 2)
-                  option = 1;
-              }
-              else
-              {
-                if (option == 1)
-                {
-                  tankFull = newValue; // save tankFull value in preference
-                  pref.putInt("tankFull", tankFull);
-                  break;
-                }
-                else if (option == 2)
-                  break;
-              }
-            }
-            count = 0;
-            display.display();
-          }
-        }
-
-        else if (option == 2)
-        {
-          byte count = 0, option = 1;
-          int newValue = tankLow; // old value
-          while (true)
-          {
-            display.clearDisplay();
-            display.setTextColor(SH110X_WHITE);
-            display.setTextSize(1);
-            display.setFont(NULL);
-            display.setCursor(0, 0);
-            display.println("Ultra-Sonic: EMPTY");
-            display.drawLine(0, 8, 127, 8, 1);
-            display.setCursor(0, 15);
-            display.print("Old Value:");
-            display.print(String(tankLow) + " cm");
-            display.setCursor(0, 28);
-            display.print("New Value: ");
-            if (option == 1)
-            {
-              display.fillRect(63, 27, 11, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.print("-");
-              display.setTextColor(SH110X_WHITE);
-              display.print(" " + String(newValue) + " cm ");
-              display.setCursor(120, 28);
-              display.print("+");
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else if (option == 2)
-            {
-              display.print("- ");
-              display.print(String(newValue) + " cm ");
-              display.fillRect(117, 27, 11, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(120, 28);
-              display.print("+");
-              display.setTextColor(SH110X_WHITE);
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else if (option == 3)
-            {
-              display.print("- ");
-              display.print(String(newValue) + " cm ");
-              display.setCursor(120, 28);
-              display.print("+");
-              display.fillRect(20, 49, 27, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setTextColor(SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else if (option == 4)
-            {
-              display.print("- ");
-              display.print(String(newValue) + " cm ");
-              display.setCursor(120, 28);
-              display.print("+");
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.fillRect(63, 49, 45, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-              display.setTextColor(SH110X_WHITE);
-            }
-
-            if (digitalRead(BUTTON) == 1)
-            {
-              while (digitalRead(BUTTON) == 1)
-              {
-                count++;
-                if (((option == 1) || (option == 2)) && count >= 3)
-                  break;
-                else if (((option == 3) || (option == 4)) && count >= 3)
-                {
-                  delay(100);
-                  blinkOrange(0, 150, 0);
-                }
-                if (count <= 2)
-                  blinkOrange(1, 20);
-                delay(50);
-              }
-
-              if (count >= 1 && count <= 2)
-              {
-                option++;
-                if (option > 4)
-                  option = 1;
-              }
-              else
-              {
-                if (option == 1)
-                {
-                  newValue--;
-                  if (newValue < 0)
-                    newValue = 0;
-                }
-                else if (option == 2)
-                {
-                  newValue++;
-                  if (newValue >= MAX_ULTRASONIC_VALUE)
-                    newValue = MAX_ULTRASONIC_VALUE;
-                }
-                else if (option == 3)
-                {
-                  tankLow = newValue; // save tankLow value in preference
-                  pref.putInt("tankLow", tankLow);
-                  break;
-                }
-                else if (option == 4)
-                  break;
-              }
-            }
-            count = 0;
-            display.display();
-          }
-
-          pixels.setBrightness(20);
-          pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-          pixels.show();
-
-          display.clearDisplay();
-          display.display();
-          delay(300);
-
-          count = 0, option = 1;
-          newValue = tankFull; // old value
-          while (true)
-          {
-            display.clearDisplay();
-            display.setTextColor(SH110X_WHITE);
-            display.setTextSize(1);
-            display.setFont(NULL);
-            display.setCursor(0, 0);
-            display.println("Ultra-Sonic: FULL");
-            display.drawLine(0, 8, 127, 8, 1);
-            display.setCursor(0, 15);
-            display.print("Old Value:");
-            display.print(String(tankFull) + " cm");
-            display.setCursor(0, 28);
-            display.print("New Value: ");
-            if (option == 1)
-            {
-              display.fillRect(63, 27, 11, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.print("-");
-              display.setTextColor(SH110X_WHITE);
-              display.print(" " + String(newValue) + " cm ");
-              display.setCursor(120, 28);
-              display.print("+");
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else if (option == 2)
-            {
-              display.print("- ");
-              display.print(String(newValue) + " cm ");
-              display.fillRect(117, 27, 11, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(120, 28);
-              display.print("+");
-              display.setTextColor(SH110X_WHITE);
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else if (option == 3)
-            {
-              display.print("- ");
-              display.print(String(newValue) + " cm ");
-              display.setCursor(120, 28);
-              display.print("+");
-              display.fillRect(20, 49, 27, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setTextColor(SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else if (option == 4)
-            {
-              display.print("- ");
-              display.print(String(newValue) + " cm ");
-              display.setCursor(120, 28);
-              display.print("+");
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.fillRect(63, 49, 45, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-              display.setTextColor(SH110X_WHITE);
-            }
-
-            if (digitalRead(BUTTON) == 1)
-            {
-              while (digitalRead(BUTTON) == 1)
-              {
-                count++;
-                if (((option == 1) || (option == 2)) && count >= 3)
-                  break;
-                else if (((option == 3) || (option == 4)) && count >= 3)
-                {
-                  delay(100);
-                  blinkOrange(0, 150, 0);
-                }
-                if (count <= 2)
-                  blinkOrange(1, 20);
-                delay(50);
-              }
-
-              if (count >= 1 && count <= 2)
-              {
-                option++;
-                if (option > 4)
-                  option = 1;
-              }
-              else
-              {
-                if (option == 1)
-                {
-                  newValue--;
-                  if (newValue < 0)
-                    newValue = 0;
-                }
-                else if (option == 2)
-                  newValue++;
-                else if (option == 3)
-                {
-                  tankFull = newValue; // save tankFull value in preference
-                  pref.putInt("tankFull", tankFull);
-                  break;
-                }
-                else if (option == 4)
-                  break;
-              }
-            }
-            count = 0;
-            display.display();
-          }
-          pixels.setBrightness(20);
-          pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-          pixels.show();
-        }
-        else if (option == 3)
-          return;
-      }
-    }
-    count = 0;
-  }
-  pref.end();
-}
-
-// sets values for ampLow, ampMax, wattLow, wattMax using live values from sensor
-void ampereValues()
-{
-  pref.begin("database", false);
-  byte count = 0, option = 1;
-  while (true)
-  {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setFont(NULL);
-    display.setCursor(0, 0);
-    display.println("Ampere Sensor");
-    display.drawLine(0, 8, 127, 8, 1);
-
-    display.setCursor(3, 13);
-    display.print("1. Use live values");
-    display.setCursor(3, 27);
-    display.print("2. Use manual values");
-    display.setCursor(3, 41);
-    display.print("3. Exit");
-    switch (option)
-    {
-    case 1:
-      display.drawRect(0, 10, 127, 13, 1);
-      break;
-    case 2:
-      display.drawRect(0, 24, 127, 13, 1);
-      break;
-    case 3:
-      display.drawRect(0, 38, 127, 13, 1);
-      break;
-    }
-    display.display();
-
-    if (digitalRead(BUTTON) == 1)
-    {
-      while (digitalRead(BUTTON) == 1)
-      {
-        count++;
-        if (count >= 1 && count <= 6)
-        {
-          blinkOrange(1, 20);
-        }
-        else
-        {
-          blinkOrange(0, 150);
-          delay(100);
-        }
-        delay(50);
-      }
-
-      pixels.setBrightness(20);
-      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-      pixels.show();
-
-      if (count >= 1 && count <= 6)
-      {
-        option++;
-        if (option > 3)
-          option = 1;
-      }
-      else
-      {
-        if (option == 1)
-        {
-          byte count = 0, option = 1;
-          while (true)
-          {
-            float newValue = liveAmp; // fetch live ampere sensor values
-            display.clearDisplay();
-            display.setTextColor(SH110X_WHITE);
-            display.setTextSize(1);
-            display.setFont(NULL);
-            display.setCursor(0, 0);
-            display.println("Current: LOW");
-            display.drawLine(0, 8, 127, 8, 1);
-            display.setCursor(0, 15);
-            display.print("Old Value:");
-            display.print(String(ampLow) + " A");
-            display.setCursor(0, 28);
-            display.print("New Value:");
-            display.print(String(newValue) + " A");
-            // buttons
-            if (option == 1)
-            {
-              display.fillRect(20, 49, 27, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setTextColor(SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else
-            {
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.fillRect(63, 49, 45, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-              display.setTextColor(SH110X_WHITE);
-            }
-
-            if (digitalRead(BUTTON) == 1)
-            {
-              while (digitalRead(BUTTON) == 1)
-              {
-                count++;
-                if (count >= 1 && count <= 2)
-                {
-                  blinkOrange(1, 20);
-                }
-                else
-                {
-                  blinkOrange(0, 150);
-                  delay(100);
-                }
-                delay(50);
-              }
-
-              pixels.setBrightness(20);
-              pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-              pixels.show();
-
-              if (count >= 1 && count <= 2)
-              {
-                option++;
-                if (option > 2)
-                  option = 1;
-              }
-              else
-              {
-                if (option == 1)
-                {
-                  ampLow = newValue; // save ampLow value in preference
-                  pref.putFloat("ampLow", ampLow);
-                  break;
-                }
-                else if (option == 2)
-                  break;
-              }
-            }
-            count = 0;
-            display.display();
-          }
-
-          display.clearDisplay();
-          display.display();
-          delay(300);
-
-          while (true)
-          {
-            float newValue = liveAmp; // fetch live Ampere values
-            display.clearDisplay();
-            display.setTextColor(SH110X_WHITE);
-            display.setTextSize(1);
-            display.setFont(NULL);
-            display.setCursor(0, 0);
-            display.println("Current: HIGH");
-            display.drawLine(0, 8, 127, 8, 1);
-            display.setCursor(0, 15);
-            display.print("Old Value:");
-            display.print(String(ampMax) + " A");
-            display.setCursor(0, 28);
-            display.print("New Value:");
-            display.print(String(newValue) + " A");
-            // buttons
-            if (option == 1)
-            {
-              display.fillRect(20, 49, 27, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setTextColor(SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else
-            {
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.fillRect(63, 49, 45, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-              display.setTextColor(SH110X_WHITE);
-            }
-
-            if (digitalRead(BUTTON) == 1)
-            {
-              while (digitalRead(BUTTON) == 1)
-              {
-                count++;
-                if (count >= 1 && count <= 2)
-                {
-                  blinkOrange(1, 20);
-                }
-                else
-                {
-                  blinkOrange(0, 150);
-                  delay(100);
-                }
-                delay(50);
-              }
-
-              pixels.setBrightness(20);
-              pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-              pixels.show();
-
-              if (count >= 1 && count <= 2)
-              {
-                option++;
-                if (option > 2)
-                  option = 1;
-              }
-              else
-              {
-                if (option == 1)
-                {
-                  ampMax = newValue; // save ampMax value in preference
-                  pref.putFloat("ampMax", ampMax);
-                  break;
-                }
-                else if (option == 2)
-                  break;
-              }
-            }
-            count = 0;
-            display.display();
-          }
-        }
-
-        else if (option == 2)
-        {
-          byte count = 0, option = 1;
-          float newValue = ampLow; // old value
-          while (true)
-          {
-            display.clearDisplay();
-            display.setTextColor(SH110X_WHITE);
-            display.setTextSize(1);
-            display.setFont(NULL);
-            display.setCursor(0, 0);
-            display.println("Current: LOW");
-            display.drawLine(0, 8, 127, 8, 1);
-            display.setCursor(0, 15);
-            display.print("Old Value:");
-            display.print(String(ampLow) + " A");
-            display.setCursor(0, 28);
-            display.print("New Value: ");
-            if (option == 1)
-            {
-              display.fillRect(63, 27, 11, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.print("-");
-              display.setTextColor(SH110X_WHITE);
-              display.print(" " + String(newValue) + " A ");
-              display.setCursor(120, 28);
-              display.print("+");
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else if (option == 2)
-            {
-              display.print("- ");
-              display.print(String(newValue) + " A ");
-              display.fillRect(117, 27, 11, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(120, 28);
-              display.print("+");
-              display.setTextColor(SH110X_WHITE);
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else if (option == 3)
-            {
-              display.print("- ");
-              display.print(String(newValue) + " A ");
-              display.setCursor(120, 28);
-              display.print("+");
-              display.fillRect(20, 49, 27, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setTextColor(SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else if (option == 4)
-            {
-              display.print("- ");
-              display.print(String(newValue) + " A ");
-              display.setCursor(120, 28);
-              display.print("+");
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.fillRect(63, 49, 45, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-              display.setTextColor(SH110X_WHITE);
-            }
-
-            if (digitalRead(BUTTON) == 1)
-            {
-              while (digitalRead(BUTTON) == 1)
-              {
-                count++;
-                if (((option == 1) || (option == 2)) && count >= 3)
-                  break;
-                else if (((option == 3) || (option == 4)) && count >= 3)
-                {
-                  delay(100);
-                  blinkOrange(0, 150, 0);
-                }
-                if (count <= 2)
-                  blinkOrange(1, 20);
-                delay(50);
-              }
-
-              if (count >= 1 && count <= 2)
-              {
-                option++;
-                if (option > 4)
-                  option = 1;
-              }
-              else
-              {
-                if (option == 1)
-                {
-                  newValue = newValue - 0.1;
-                  if (newValue < 0)
-                    newValue = 0;
-                }
-                else if (option == 2)
-                  newValue = newValue + 0.1;
-                else if (option == 3)
-                {
-                  ampLow = newValue; // save ampLow value in preference
-                  pref.putFloat("ampLow", ampLow);
-                  break;
-                }
-                else if (option == 4)
-                  break;
-              }
-            }
-            count = 0;
-            display.display();
-          }
-
-          pixels.setBrightness(20);
-          pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-          pixels.show();
-
-          display.clearDisplay();
-          display.display();
-          delay(300);
-
-          count = 0, option = 1;
-          newValue = ampMax; // old value
-          while (true)
-          {
-            display.clearDisplay();
-            display.setTextColor(SH110X_WHITE);
-            display.setTextSize(1);
-            display.setFont(NULL);
-            display.setCursor(0, 0);
-            display.println("Current: HIGH");
-            display.drawLine(0, 8, 127, 8, 1);
-            display.setCursor(0, 15);
-            display.print("Old Value:");
-            display.print(String(ampMax) + " A");
-            display.setCursor(0, 28);
-            display.print("New Value: ");
-            if (option == 1)
-            {
-              display.fillRect(63, 27, 11, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.print("-");
-              display.setTextColor(SH110X_WHITE);
-              display.print(" " + String(newValue) + " A ");
-              display.setCursor(120, 28);
-              display.print("+");
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else if (option == 2)
-            {
-              display.print("- ");
-              display.print(String(newValue) + " A ");
-              display.fillRect(117, 27, 11, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(120, 28);
-              display.print("+");
-              display.setTextColor(SH110X_WHITE);
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else if (option == 3)
-            {
-              display.print("- ");
-              display.print(String(newValue) + " A ");
-              display.setCursor(120, 28);
-              display.print("+");
-              display.fillRect(20, 49, 27, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.setTextColor(SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-            }
-            else if (option == 4)
-            {
-              display.print("- ");
-              display.print(String(newValue) + " A ");
-              display.setCursor(120, 28);
-              display.print("+");
-              display.setCursor(22, 50);
-              display.print("Save");
-              display.fillRect(63, 49, 45, 10, 1);
-              display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-              display.setCursor(65, 50);
-              display.print("Discard");
-              display.setTextColor(SH110X_WHITE);
-            }
-
-            if (digitalRead(BUTTON) == 1)
-            {
-              while (digitalRead(BUTTON) == 1)
-              {
-                count++;
-                if (((option == 1) || (option == 2)) && count >= 3)
-                  break;
-                else if (((option == 3) || (option == 4)) && count >= 3)
-                {
-                  delay(100);
-                  blinkOrange(0, 150, 0);
-                }
-                if (count <= 2)
-                  blinkOrange(1, 20);
-                delay(50);
-              }
-
-              if (count >= 1 && count <= 2)
-              {
-                option++;
-                if (option > 4)
-                  option = 1;
-              }
-              else
-              {
-                if (option == 1)
-                {
-                  newValue = newValue - 0.1;
-                  if (newValue < 0)
-                    newValue = 0;
-                }
-                else if (option == 2)
-                  newValue = newValue + 0.1;
-                else if (option == 3)
-                {
-                  ampMax = newValue; // save ampMax value in preference
-                  pref.putFloat("ampMax", ampMax);
-                  break;
-                }
-                else if (option == 4)
-                  break;
-              }
-            }
-            count = 0;
-            display.display();
-          }
-          pixels.setBrightness(20);
-          pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-          pixels.show();
-        }
-        else if (option == 3)
-          return;
-      }
-    }
-
-    count = 0;
-  }
-  pref.end();
-}
-
 void configurations()
 {
   pref.begin("database", false);
@@ -2598,26 +1687,11 @@ void configurations()
     display.println("Configurations");
     display.drawLine(0, 8, 127, 8, 1);
 
-    if (option > 3)
-    {
-      display.setCursor(3, 13);
-      display.print("4. Wifi");
-      display.setCursor(3, 27);
-      display.print("5. Autorun");
-      display.setCursor(3, 41);
-      display.print("6. Exit");
-    }
-    else
-    {
-      display.setCursor(3, 13);
-      display.print("1. Ultrasonic");
-      display.setCursor(3, 27);
-      display.print("2. Time Update");
-      display.setCursor(3, 41);
-      display.print("3. Other Sensors");
-      display.setCursor(3, 55);
-      display.print("4. Wifi");
-    }
+    display.setCursor(3, 13);
+    display.print("1. WIFI");
+    display.setCursor(3, 27);
+    display.print("2. Exit");
+
     switch (option)
     {
     case 1:
@@ -2625,18 +1699,6 @@ void configurations()
       break;
     case 2:
       display.drawRect(0, 24, 127, 13, 1);
-      break;
-    case 3:
-      display.drawRect(0, 38, 127, 13, 1);
-      break;
-    case 4:
-      display.drawRect(0, 10, 127, 13, 1);
-      break;
-    case 5:
-      display.drawRect(0, 24, 127, 13, 1);
-      break;
-    case 6:
-      display.drawRect(0, 38, 127, 13, 1);
       break;
     }
     display.display();
@@ -2665,7 +1727,7 @@ void configurations()
       if (count >= 1 && count <= 6)
       {
         option++;
-        if (option > 6)
+        if (option > 2)
           option = 1;
       }
       else
@@ -2673,106 +1735,12 @@ void configurations()
         if (option == 1)
           break;
         else if (option == 2)
-          configTime();
-        else if (option == 3)
-          configSensors(); // Bypass Sensors (Current and Float)
-        else if (option == 4)
-          break;
-        else if (option == 5)
-          break;
-        else if (option == 6)
           return;
       }
     }
     count = 0;
   }
-  // for ultrasonic and wifi and rest in separate function
   if (option == 1)
-  {
-    if (useUltrasonic)
-      option = 1;
-    else
-      option = 2;
-    while (true)
-    {
-      display.clearDisplay();
-      display.setTextSize(1);
-      display.setFont(NULL);
-      display.setCursor(0, 0);
-      display.println("Ultrasonic");
-      display.drawLine(0, 8, 127, 8, 1);
-
-      switch (option)
-      {
-      case 1:
-        display.setCursor(25, 40);
-        display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-        display.fillRect(23, 39, 15, 10, 1);
-        display.print("ON");
-        display.setCursor(85, 40);
-        display.setTextColor(SH110X_WHITE);
-        display.print("OFF");
-        break;
-      case 2:
-        display.setCursor(25, 40);
-        display.setTextColor(SH110X_WHITE);
-        display.print("ON");
-        display.setCursor(85, 40);
-        display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-        display.fillRect(83, 39, 21, 10, 1);
-        display.print("OFF");
-        display.setTextColor(SH110X_WHITE);
-        break;
-      }
-      display.display();
-
-      if (digitalRead(BUTTON) == 1)
-      {
-        while (digitalRead(BUTTON) == 1)
-        {
-          count++;
-          if (count >= 1 && count <= 2)
-          {
-            blinkOrange(1, 20);
-          }
-          else
-          {
-            blinkOrange(0, 150);
-            delay(100);
-          }
-          delay(50);
-        }
-
-        pixels.setBrightness(20);
-        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-        pixels.show();
-
-        if (count >= 1 && count <= 2)
-        {
-          option++;
-          if (option > 2)
-            option = 1;
-        }
-        else
-        {
-          if (option == 1)
-          {
-            useUltrasonic = true;
-            pref.putBool("useUltrasonic", true);
-            break;
-          }
-          else if (option == 2)
-          {
-            useUltrasonic = false;
-            pref.putBool("useUltrasonic", false);
-            break;
-          }
-        }
-      }
-      count = 0;
-    }
-  }
-  else if (option == 4)
   {
     if (useWifi)
       option = 1;
@@ -2816,7 +1784,7 @@ void configurations()
         while (digitalRead(BUTTON) == 1)
         {
           count++;
-          if (count >= 1 && count <= 2)
+          if (count >= 1 && count <= 6)
           {
             blinkOrange(1, 20);
           }
@@ -2858,418 +1826,21 @@ void configurations()
       resetFlag = true;
     }
   }
-  else if (option == 5)
-  {
-    if (autoRun)
-      option = 1;
-    else
-      option = 2;
-    while (true)
-    {
-      display.clearDisplay();
-      display.setTextSize(1);
-      display.setFont(NULL);
-      display.setCursor(0, 0);
-      display.println("AUTORUN");
-      display.drawLine(0, 8, 127, 8, 1);
-
-      switch (option)
-      {
-      case 1:
-        display.setCursor(25, 40);
-        display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-        display.fillRect(23, 39, 15, 10, 1);
-        display.print("ON");
-        display.setCursor(85, 40);
-        display.setTextColor(SH110X_WHITE);
-        display.print("OFF");
-        break;
-      case 2:
-        display.setCursor(25, 40);
-        display.setTextColor(SH110X_WHITE);
-        display.print("ON");
-        display.setCursor(85, 40);
-        display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-        display.fillRect(83, 39, 21, 10, 1);
-        display.print("OFF");
-        display.setTextColor(SH110X_WHITE);
-        break;
-      }
-      display.display();
-
-      if (digitalRead(BUTTON) == 1)
-      {
-        while (digitalRead(BUTTON) == 1)
-        {
-          count++;
-          if (count >= 1 && count <= 2)
-          {
-            blinkOrange(1, 20);
-          }
-          else
-          {
-            blinkOrange(0, 150);
-            delay(100);
-          }
-          delay(50);
-        }
-
-        pixels.setBrightness(20);
-        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-        pixels.show();
-
-        if (count >= 1 && count <= 2)
-        {
-          option++;
-          if (option > 2)
-            option = 1;
-        }
-        else
-        {
-          if (option == 1)
-          {
-            autoRun = true;
-            pref.putBool("autoRun", true);
-            break;
-          }
-          else if (option == 2)
-          {
-            autoRun = false;
-            pref.putBool("autoRun", false);
-            break;
-          }
-        }
-      }
-      count = 0;
-    }
-  }
   display.clearDisplay();
   pref.end();
 }
 
-void configSensors()
-{
-  pref.begin("database", false);
-  byte count = 0, option = 1;
-  while (true)
-  {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setFont(NULL);
-    display.setCursor(0, 0);
-    display.println("Configurations");
-    display.drawLine(0, 8, 127, 8, 1);
-
-    display.setCursor(3, 13);
-    display.print("1. Current Sensor");
-    display.setCursor(3, 27);
-    display.print("2. Float Sensor");
-    display.setCursor(3, 41);
-    display.print("3. Exit");
-
-    switch (option)
-    {
-    case 1:
-      display.drawRect(0, 10, 127, 13, 1);
-      break;
-    case 2:
-      display.drawRect(0, 24, 127, 13, 1);
-      break;
-    case 3:
-      display.drawRect(0, 38, 127, 13, 1);
-      break;
-    }
-    display.display();
-
-    if (digitalRead(BUTTON) == 1)
-    {
-      while (digitalRead(BUTTON) == 1)
-      {
-        count++;
-        if (count >= 1 && count <= 6)
-        {
-          blinkOrange(1, 20);
-        }
-        else
-        {
-          blinkOrange(0, 150);
-          delay(100);
-        }
-        delay(50);
-      }
-
-      pixels.setBrightness(20);
-      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-      pixels.show();
-
-      if (count >= 1 && count <= 6)
-      {
-        option++;
-        if (option > 3)
-          option = 1;
-      }
-      else
-      {
-        if (option == 1)
-          break;
-        else if (option == 2)
-          break;
-        else if (option == 3)
-          return;
-      }
-    }
-    count = 0;
-  }
-  if (option == 1)
-  {
-    if (useSensors)
-      option = 1;
-    else
-      option = 2;
-    while (true)
-    {
-      display.clearDisplay();
-      display.setTextSize(1);
-      display.setFont(NULL);
-      display.setCursor(0, 0);
-      display.println("Current Sensor");
-      display.drawLine(0, 8, 127, 8, 1);
-
-      switch (option)
-      {
-      case 1:
-        display.setCursor(25, 40);
-        display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-        display.fillRect(23, 39, 15, 10, 1);
-        display.print("ON");
-        display.setCursor(85, 40);
-        display.setTextColor(SH110X_WHITE);
-        display.print("OFF");
-        break;
-      case 2:
-        display.setCursor(25, 40);
-        display.setTextColor(SH110X_WHITE);
-        display.print("ON");
-        display.setCursor(85, 40);
-        display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-        display.fillRect(83, 39, 21, 10, 1);
-        display.print("OFF");
-        display.setTextColor(SH110X_WHITE);
-        break;
-      }
-      if (digitalRead(BUTTON) == 1)
-      {
-        while (digitalRead(BUTTON) == 1)
-        {
-          count++;
-          if (count >= 1 && count <= 2)
-          {
-            blinkOrange(1, 20);
-          }
-          else
-          {
-            blinkOrange(0, 150);
-            delay(100);
-          }
-          delay(50);
-        }
-
-        pixels.setBrightness(20);
-        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-        pixels.show();
-
-        if (count >= 1 && count <= 2)
-        {
-          option++;
-          if (option > 2)
-            option = 1;
-        }
-        else
-        {
-          if (option == 1)
-          {
-            useSensors = true;
-            pref.putBool("useSensors", true);
-            break;
-          }
-          else if (option == 2)
-          {
-            useSensors = false;
-            pref.putBool("useSensors", false);
-            break;
-          }
-        }
-      }
-      count = 0;
-      display.display();
-    }
-  }
-  else if (option == 2)
-  {
-    if (useFloat)
-      option = 1;
-    else
-      option = 2;
-    while (true)
-    {
-      display.clearDisplay();
-      display.setTextSize(1);
-      display.setFont(NULL);
-      display.setCursor(0, 0);
-      display.println("Float Sensor");
-      display.drawLine(0, 8, 127, 8, 1);
-
-      switch (option)
-      {
-      case 1:
-        display.setCursor(25, 40);
-        display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-        display.fillRect(23, 39, 15, 10, 1);
-        display.print("ON");
-        display.setCursor(85, 40);
-        display.setTextColor(SH110X_WHITE);
-        display.print("OFF");
-        break;
-      case 2:
-        display.setCursor(25, 40);
-        display.setTextColor(SH110X_WHITE);
-        display.print("ON");
-        display.setCursor(85, 40);
-        display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-        display.fillRect(83, 39, 21, 10, 1);
-        display.print("OFF");
-        display.setTextColor(SH110X_WHITE);
-        break;
-      }
-      if (digitalRead(BUTTON) == 1)
-      {
-        while (digitalRead(BUTTON) == 1)
-        {
-          count++;
-          if (count >= 1 && count <= 2)
-          {
-            blinkOrange(1, 20);
-          }
-          else
-          {
-            blinkOrange(0, 150);
-            delay(100);
-          }
-          delay(50);
-        }
-
-        pixels.setBrightness(20);
-        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-        pixels.show();
-
-        if (count >= 1 && count <= 2)
-        {
-          option++;
-          if (option > 2)
-            option = 1;
-        }
-        else
-        {
-          if (option == 1)
-          {
-            useFloat = true;
-            pref.putBool("useFloat", true);
-            break;
-          }
-          else if (option == 2)
-          {
-            useFloat = false;
-            pref.putBool("useFloat", false);
-            break;
-          }
-        }
-      }
-      count = 0;
-      display.display();
-    }
-  }
-  display.clearDisplay();
-  pref.end();
-}
-
-// Manual time set not implemented yet
-void configTime()
-{
-  byte count = 0, option = 1;
-  while (true)
-  {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setFont(NULL);
-    display.setCursor(0, 0);
-    display.println("Time Update");
-    display.drawLine(0, 8, 127, 8, 1);
-
-    display.setCursor(3, 13);
-    display.print("1. Auto (Internet)");
-    display.setCursor(3, 27);
-    display.print("2. Manual");
-    display.setCursor(3, 41);
-    display.print("3. Exit");
-
-    switch (option)
-    {
-    case 1:
-      display.drawRect(0, 10, 127, 13, 1);
-      break;
-    case 2:
-      display.drawRect(0, 24, 127, 13, 1);
-      break;
-    case 3:
-      display.drawRect(0, 38, 127, 13, 1);
-      break;
-    }
-    display.display();
-
-    if (digitalRead(BUTTON) == 1)
-    {
-      while (digitalRead(BUTTON) == 1)
-      {
-        count++;
-        if (count >= 1 && count <= 6)
-        {
-          blinkOrange(1, 20);
-        }
-        else
-        {
-          blinkOrange(0, 150);
-          delay(100);
-        }
-        delay(50);
-      }
-
-      pixels.setBrightness(20);
-      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-      pixels.show();
-
-      if (count >= 1 && count <= 6)
-      {
-        option++;
-        if (option > 3)
-          option = 1;
-      }
-      else
-      {
-        if (option == 1)
-          autoTimeUpdate();
-        else if (option == 2)
-          break; // implement this
-        else if (option == 3)
-          return;
-      }
-    }
-    count = 0;
-  }
-  display.clearDisplay();
-}
-
-// Test this for disconnection error
-void autoTimeUpdate(bool temp)
+/**
+ * @brief Automatically synchronizes the RTC with NTP time via WiFi
+ *
+ * @return bool True if RTC was successfully synchronized with NTP time, false otherwise
+ *
+ * This function checks if the device is connected to WiFi, then requests the current time
+ * from an NTP server and updates the RTC with the received time. This ensures the device
+ * maintains accurate time even if the RTC battery has drained. Logs the synchronization
+ * result to the serial monitor.
+ */
+bool autoTimeUpdate()
 {
   if (WiFi.status() == WL_CONNECTED)
   {
@@ -3290,87 +1861,25 @@ void autoTimeUpdate(bool temp)
 
       uint8_t day = ti->tm_mday;
       rtc.adjust(DateTime(year, month, day, timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds()));
-    }
-    if (temp)
-    {
-      display.clearDisplay();
-      display.setTextColor(SH110X_WHITE);
-      display.setTextSize(1);
-      display.setFont(NULL);
-      display.setCursor(44, 10);
-      display.println("DONE");
-      display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-      display.setCursor(50, 41);
-      display.fillRect(47, 40, 29, 10, 1);
-      display.print("OKAY");
-      display.setTextColor(SH110X_WHITE);
-      display.display();
 
-      byte count = 0;
-      while (1)
-      {
-        if (digitalRead(BUTTON) == 1)
-        {
-          while (digitalRead(BUTTON) == 1)
-          {
-            count++;
-            if (count >= 1)
-            {
-              blinkOrange(1, 20);
-            }
-            delay(50);
-          }
-
-          pixels.setBrightness(20);
-          pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-          pixels.show();
-
-          if (count >= 1)
-            break;
-        }
-      }
+      Serial.println("RTC synchronized successfully");
+      return true;
     }
   }
-  else
-  {
-    display.clearDisplay();
-    display.setTextColor(SH110X_WHITE);
-    display.setTextSize(1);
-    display.setCursor(14, 10);
-    display.println("WIFI NOT CONNECTED");
-    display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-    display.setCursor(50, 41);
-    display.fillRect(47, 40, 29, 10, 1);
-    display.print("OKAY");
-    display.setTextColor(SH110X_WHITE);
-    display.display();
 
-    byte count = 0;
-    while (1)
-    {
-      if (digitalRead(BUTTON) == 1)
-      {
-        while (digitalRead(BUTTON) == 1)
-        {
-          count++;
-          if (count >= 1)
-            blinkOrange(1, 20);
-          delay(50);
-        }
-
-        pixels.setBrightness(20);
-        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-        pixels.show();
-
-        if (count >= 1)
-          break;
-      }
-    }
-  }
-  return;
+  Serial.println("RTC synchronization failed");
+  return false;
 }
 
-void totalReset()
+/**
+ * @brief Displays a confirmation dialog to reset WiFi credentials
+ *
+ * This function presents a "Reset WIFI?" confirmation prompt on the OLED display.
+ * If the user confirms by pressing the button, all stored WiFi credentials (SSID and password)
+ * are cleared from persistent memory and the device restarts in WiFi Manager mode to allow
+ * new WiFi configuration. If cancelled, the function returns without making changes.
+ */
+void resetWifi()
 {
   byte count = 0, option = 1;
   pixels.setBrightness(150);
@@ -3383,7 +1892,7 @@ void totalReset()
     display.setTextSize(1);
     display.setFont(NULL);
     display.setCursor(0, 10);
-    display.println("Reset Everything?");
+    display.println("Reset WIFI?");
     // buttons
     if (option == 1)
     {
@@ -3442,29 +1951,8 @@ void totalReset()
         else if (option == 2)
         { // YES
           pref.begin("database", false);
-
           pref.putString("ssid", "");
           pref.putString("password", "");
-          pref.putInt("tankLow", 0);
-          pref.putInt("tankFull", 0);
-          pref.putFloat("ampLow", 0);
-          pref.putFloat("ampMax", 0);
-          pref.putBool("useUltrasonic", false);
-          pref.putBool("useSensors", false);
-          pref.putBool("useFloat", false);
-          pref.putBool("useWifi", false);
-          pref.putUChar("doneToday", 0);
-          int defaultAutoRunTimes[3][2] = {
-              {1230, 1330},
-              {1530, 1630},
-              {1830, 1930}};
-          for (byte i = 0; i < 3; i++)
-          {
-            autoRunTimes[i][0] = defaultAutoRunTimes[i][0];
-            autoRunTimes[i][1] = defaultAutoRunTimes[i][1];
-            pref.putInt(autoRunTimeKeys[i][0], defaultAutoRunTimes[i][0]);
-            pref.putInt(autoRunTimeKeys[i][1], defaultAutoRunTimes[i][1]);
-          }
           pref.end();
           resetFlag = true;
         }
@@ -3572,125 +2060,6 @@ void handlePumpCompletion(byte code)
       pixels.show();
       break;
     }
-  }
-}
-
-/*
-Prints various system related data
-!! Add Current Sensor
-*/
-void sysWatcher()
-{
-  byte data = 0, option = 0, count = 0;
-  while (1)
-  {
-    if (data == 0)
-    {
-      display.clearDisplay();
-      display.setTextColor(SH110X_WHITE);
-      display.setTextSize(1);
-      display.setFont(NULL);
-      display.setCursor(0, 0);
-      display.println("CPU Speed: " + String(getCpuFrequencyMhz()) + "Mhz");
-      display.setCursor(0, 10);
-      display.print("XTAL Freq: " + String(getXtalFrequencyMhz()) + "Mhz");
-      display.setCursor(0, 20);
-      display.print("APB Bus: " + String(getApbFrequency()) + "hz");
-      display.setCursor(0, 30);
-      int8_t temp = WiFi.RSSI();
-      display.print("WIFI RSSI: " + String(temp));
-      if (temp >= -50)
-        display.print(" (WOW)");
-      else if (temp > -60 && temp < -50)
-        display.print(" (GOOD)");
-      else if (temp > -70 && temp <= -60)
-        display.print(" (FAIR)");
-      else if (temp <= -70)
-        display.print(" (WEAK)");
-      display.setCursor(0, 40);
-      display.print("IP: ");
-      display.print(WiFi.localIP());
-      display.drawCircle(70, 50, 2, 1);
-      display.fillCircle(59, 50, 2, 1);
-    }
-    else if (data == 1)
-    {
-      display.clearDisplay();
-      display.setCursor(0, 0);
-      display.println("Float: " + String(floatSensor));
-      if (useUltrasonic)
-      {
-        display.setCursor(0, 10);
-        display.println("U.S.: " + String(liveTankLevel) + " cm");
-      }
-      display.fillCircle(70, 50, 2, 1);
-      display.drawCircle(59, 50, 2, 1);
-    }
-
-    if (option == 0)
-    {
-      display.setCursor(32, 56);
-      display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-      display.fillRect(28, 55, 29, 10, 1);
-      display.print("BACK");
-      display.setTextColor(SH110X_WHITE);
-      display.setCursor(75, 56);
-      display.print("NEXT");
-      display.setTextColor(SH110X_WHITE);
-      display.display();
-    }
-    else if (option == 1)
-    {
-      display.setCursor(32, 56);
-      display.setTextColor(SH110X_WHITE);
-      display.print("BACK");
-      display.setCursor(75, 56);
-      display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-      display.fillRect(71, 55, 29, 10, 1);
-      display.print("NEXT");
-      display.setTextColor(SH110X_WHITE);
-      display.display();
-    }
-
-    if (digitalRead(BUTTON) == 1)
-    {
-      while (digitalRead(BUTTON) == 1)
-      {
-        count++;
-        if (count >= 1 && count <= 2)
-        {
-          blinkOrange(1, 20, 50);
-        }
-        else
-        {
-          blinkOrange(0, 150, 0);
-          delay(100);
-        }
-        delay(50);
-      }
-
-      pixels.setBrightness(20);
-      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-      pixels.show();
-      if (count >= 1 && count <= 2)
-      {
-        option++;
-        if (option > 1)
-          option = 0;
-      }
-      else
-      {
-        if (option == 0)
-          return;
-        else if (option == 1)
-        {
-          data++;
-          if (data > 1)
-            data = 0;
-        }
-      }
-    }
-    count = 0;
   }
 }
 

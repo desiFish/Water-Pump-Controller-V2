@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pump Controller Settings</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1,
+    h2 {
+      color: white;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2.5em;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    h3 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 1.3em;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    label {
+      display: block;
+      margin-top: 15px;
+      color: #333;
+      font-weight: 500;
+      font-size: 0.95em;
+    }
+
+    label input[type="checkbox"] {
+      margin-right: 8px;
+      width: auto;
+      cursor: pointer;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="number"] {
+      width: 100%;
+      padding: 12px 15px;
+      margin-top: 8px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1em;
+      transition: all 0.3s ease;
+      background: #f8f9fa;
+    }
+
+    .password-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .password-container input[type="password"],
+    .password-container input[type="text"] {
+      margin-top: 8px;
+      width: 100%;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.2em;
+      color: #667eea;
+      padding: 0;
+      width: auto;
+      margin: 0;
+      height: auto;
+      box-shadow: none;
+      top: 50%;
+      transform: translateY(-50%);
+      transition: color 0.2s ease;
+    }
+
+    .password-toggle:hover {
+      color: #764ba2;
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus,
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #667eea;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    button {
+      width: 100%;
+      padding: 14px 20px;
+      margin-top: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    table tr {
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    table tr:last-child {
+      border-bottom: none;
+    }
+
+    table td {
+      padding: 12px 0;
+      font-size: 0.95em;
+    }
+
+    table td:first-child {
+      color: #666;
+      font-weight: 500;
+      width: 40%;
+    }
+
+    table td:last-child {
+      text-align: right;
+      color: #333;
+      font-weight: 600;
+    }
+
+    progress {
+      width: 100%;
+      height: 28px;
+      border-radius: 4px;
+      border: none;
+      background: #e0e0e0;
+      overflow: hidden;
+    }
+
+    progress::-webkit-progress-bar {
+      background: #e0e0e0;
+      border-radius: 4px;
+    }
+
+    progress::-webkit-progress-value {
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      border-radius: 4px;
+    }
+
+    progress::-moz-progress-bar {
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      border-radius: 4px;
+    }
+
+    @media (max-width: 600px) {
+
+      h1,
+      h2 {
+        font-size: 1.8em;
+      }
+
+      .row {
+        grid-template-columns: 1fr;
+      }
+
+      .card {
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>⚙️ Advanced Water Pump Controller</h2>
+    <div class="card">
+      <h3>Live Status</h3>
+
+      <table style="width:100%">
+        <tr>
+          <td>Pump</td>
+          <td id="pumpRunningLive">-</td>
+        </tr>
+        <tr>
+          <td>Tank Level</td>
+          <td id="tankPercentLive">-</td>
+        </tr>
+        <tr>
+          <td>Ultrasonic Distance</td>
+          <td id="distanceLive">-</td>
+        </tr>
+        <tr>
+          <td>Current</td>
+          <td id="ampLive">-</td>
+        </tr>
+        <tr>
+          <td>Float Switch</td>
+          <td id="floatLive">-</td>
+        </tr>
+        <tr>
+          <td>WiFi</td>
+          <td id="wifiLive">-</td>
+        </tr>
+        <tr>
+          <td>RSSI</td>
+          <td id="rssiLive">-</td>
+        </tr>
+        <tr>
+          <td>Time</td>
+          <td id="timeLive">-</td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <progress id="tankBar" value="0" max="100" style="width:100%;height:25px;">
+            </progress>
+          </td>
+        </tr>
+      </table>
+
+    </div>
+
+
+    <form id="settingsForm">
+      <div class="card">
+        <h3>Tank Calibration</h3>
+        <label>Tank Empty Distance (tankLow)</label>
+        <input type="number" id="tankLow">
+
+        <label>Tank Full Distance (tankFull)</label>
+        <input type="number" id="tankFull">
+      </div>
+
+      <div class="card">
+        <h3>Current Limits</h3>
+        <label>Minimum Current (ampLow)</label>
+        <input type="number" step="0.01" id="ampLow">
+
+        <label>Maximum Current (ampMax)</label>
+        <input type="number" step="0.01" id="ampMax">
+      </div>
+
+      <div class="card">
+        <h3>Features</h3>
+        <label><input type="checkbox" id="useUltrasonic"> Use Ultrasonic Sensor</label>
+        <label><input type="checkbox" id="useSensors"> Use Current Sensor</label>
+        <label><input type="checkbox" id="useFloat"> Use Float Sensor</label>
+        <label><input type="checkbox" id="useWifi"> Use WiFi</label>
+        <label><input type="checkbox" id="autoRun"> Enable Auto Run</label>
+      </div>
+
+      <div class="card">
+        <h3>Auto Run Schedule (HHMM)</h3>
+        <div class="row">
+          <input type="number" id="onTime1" placeholder="ON 1">
+          <input type="number" id="offTime1" placeholder="OFF 1">
+          <input type="number" id="onTime2" placeholder="ON 2">
+          <input type="number" id="offTime2" placeholder="OFF 2">
+          <input type="number" id="onTime3" placeholder="ON 3">
+          <input type="number" id="offTime3" placeholder="OFF 3">
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Cloud Logging</h3>
+        <label>API Key</label>
+        <input type="text" id="apiKey">
+      </div>
+
+      <div class="card">
+        <h3>WiFi</h3>
+        <label>SSID</label>
+        <input type="text" id="ssid">
+
+        <label>Password</label>
+        <div class="password-container">
+          <input type="password" id="password">
+          <button type="button" class="password-toggle" onclick="togglePasswordVisibility()"
+            title="Show/Hide Password">👁️</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>RTC Settings</h3>
+
+        <button type="button" onclick="syncRtcFromWiFi()">
+          Sync RTC from WIFI
+        </button>
+
+        <button type="button" onclick="syncRtcFromBrowserTime()">
+          Sync RTC From Browser Time
+        </button>
+
+        <br><br>
+
+        <label>Manual Date & Time</label>
+        <input type="datetime-local" id="manualRtc">
+
+        <button type="button" onclick="setManualRtc()">
+          Set RTC Manually
+        </button>
+      </div>
+
+      <button type="button" onclick="saveSettings()">Save Settings</button>
+
+      <button type="button" onclick="restartDevice()"
+        style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); margin-top: 10px;">
+        🔄 Restart ESP32
+      </button>
+    </form>
+
+    <script>
+      async function loadSettings() {
+        const r = await fetch('/api/settings');
+        const s = await r.json();
+
+        Object.keys(s).forEach(k => {
+          let el = document.getElementById(k);
+          if (!el) return;
+          if (el.type === "checkbox") el.checked = s[k];
+          else el.value = s[k];
+        });
+      }
+
+      async function saveSettings() {
+        const data = {
+          tankLow: +tankLow.value,
+          tankFull: +tankFull.value,
+          ampLow: +ampLow.value,
+          ampMax: +ampMax.value,
+          useUltrasonic: useUltrasonic.checked,
+          useSensors: useSensors.checked,
+          useFloat: useFloat.checked,
+          useWifi: useWifi.checked,
+          autoRun: autoRun.checked,
+          onTime1: +onTime1.value,
+          offTime1: +offTime1.value,
+          onTime2: +onTime2.value,
+          offTime2: +offTime2.value,
+          onTime3: +onTime3.value,
+          offTime3: +offTime3.value,
+          apiKey: apiKey.value,
+          ssid: ssid.value,
+          password: password.value
+        };
+
+        const r = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const response = await r.text();
+        if (r.ok) {
+          alert(response);
+        } else {
+          alert('Error: ' + response);
+        }
+      }
+
+      loadSettings();
+
+      async function loadLiveData() {
+        try {
+          const r = await fetch('/api/live');
+          const d = await r.json();
+
+          document.getElementById('pumpRunningLive').innerHTML =
+            d.pumpRunning ? 'RUNNING' : 'STOPPED';
+
+          document.getElementById('tankPercentLive').innerHTML =
+            d.tankPercent + ' %';
+
+          document.getElementById('distanceLive').innerHTML =
+            d.ultrasonicDistance + ' cm';
+
+          document.getElementById('ampLive').innerHTML =
+            Number(d.liveAmp).toFixed(2) + ' A';
+
+          document.getElementById('floatLive').innerHTML =
+            d.floatSensor ? 'FULL' : 'NOT FULL';
+
+          document.getElementById('wifiLive').innerHTML =
+            d.wifiConnected ? 'CONNECTED' : 'DISCONNECTED';
+
+          document.getElementById('rssiLive').innerHTML =
+            d.wifiRSSI + ' dBm';
+
+          document.getElementById('timeLive').innerHTML =
+            d.dateTime;
+
+          document.getElementById('pumpRunningLive').style.color =
+            d.pumpRunning ? 'green' : 'red';
+
+          document.getElementById('floatLive').style.color =
+            d.floatSensor ? 'green' : 'orange';
+
+          document.getElementById('tankBar').value = d.tankPercent;
+        }
+        catch (e) {
+          console.log(e);
+        }
+      }
+
+      setInterval(loadLiveData, 1000);
+      loadLiveData();
+
+      function togglePasswordVisibility() {
+        const passwordField = document.getElementById('password');
+        const button = document.querySelector('.password-toggle');
+
+        if (passwordField.type === 'password') {
+          passwordField.type = 'text';
+          button.textContent = '🙈';
+        } else {
+          passwordField.type = 'password';
+          button.textContent = '👁️';
+        }
+      }
+
+      async function syncRtcFromBrowserTime() {
+        const now = new Date();
+
+        const data = {
+          year: now.getFullYear(),
+          month: now.getMonth() + 1,
+          day: now.getDate(),
+          hour: now.getHours(),
+          minute: now.getMinutes(),
+          second: now.getSeconds()
+        };
+
+        const r = await fetch('/api/rtc/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        alert(await r.text());
+      }
+
+      async function setManualRtc() {
+        const dt = document.getElementById("manualRtc").value;
+
+        if (!dt) {
+          alert("Select date and time first");
+          return;
+        }
+
+        const d = new Date(dt);
+
+        const data = {
+          year: d.getFullYear(),
+          month: d.getMonth() + 1,
+          day: d.getDate(),
+          hour: d.getHours(),
+          minute: d.getMinutes(),
+          second: 0
+        };
+
+        const r = await fetch('/api/rtc/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        alert(await r.text());
+      }
+      async function syncRtcFromWiFi() {
+        try {
+          const r = await fetch('/api/rtc/update', {
+            method: 'POST'
+          });
+
+          const msg = await r.text();
+
+          if (r.ok) {
+            alert("Done: " + msg);
+          }
+          else {
+            alert("Error: " + msg);
+          }
+        }
+        catch (err) {
+          alert("Connection to controller failed");
+          console.error(err);
+        }
+      }
+
+      async function restartDevice() {
+        if (confirm("Are you sure you want to restart the ESP32? The device will be unavailable for a few seconds.")) {
+          try {
+            const r = await fetch('/api/restart', {
+              method: 'POST'
+            });
+
+            if (r.ok) {
+              alert("Restarting device...");
+            } else {
+              alert("Error: Failed to restart device");
+            }
+          } catch (err) {
+            alert("Connection to controller failed");
+            console.error(err);
+          }
+        }
+      }
+
+    </script>
+  </div>
+</body>
+
+</html>
