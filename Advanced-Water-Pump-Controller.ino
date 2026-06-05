@@ -528,9 +528,7 @@ void setup(void)
       display.display();
 
       server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-                { request->send(200, "text/plain", "Hi! Please add "
-                                                   "/update"
-                                                   " on the above address."); });
+                { request->send(LittleFS, "/settings.html", "text/html"); });
 
       // GET Settings API
       server.on("/api/settings", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -2023,13 +2021,39 @@ void handlePumpCompletion(byte code)
 
   pixels.show();
 
+  // Non-blocking 1-minute timer for auto return to home screen
+  uint32_t messageStartTime = millis();
+  const uint32_t messageTimeout = 60000; // 60 seconds in milliseconds
+  bool buttonPressed = false;
+
   while (true)
   {
+    uint32_t elapsedTime = millis() - messageStartTime;
+    uint32_t remainingSeconds = (messageTimeout - elapsedTime) / 1000;
+
+    // Check if 60 seconds have elapsed - auto exit
+    if (elapsedTime >= messageTimeout)
+    {
+      digitalWrite(BUZZER_PIN, LOW);
+      delay(100);
+      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+      pixels.show();
+      break;
+    }
+
     display.setTextColor(SH110X_BLACK, SH110X_WHITE);
     display.setCursor(50, 41);
     display.fillRect(47, 40, 29, 10, 1);
     display.print("OKAY");
     display.setTextColor(SH110X_WHITE);
+
+    // Display remaining time
+    // display.setTextColor(SH110X_BLACK, SH110X_WHITE);
+    display.setCursor(57, 56);
+    display.fillRect(47, 55, 30, 10, 0);
+    display.print(remainingSeconds);
+    display.setTextColor(SH110X_WHITE);
+
     display.display();
     if (code == 2)
     {
@@ -2043,23 +2067,25 @@ void handlePumpCompletion(byte code)
       digitalWrite(BUZZER_PIN, HIGH);
     }
 
-    bool count = false;
-
-    while (digitalRead(BUTTON) == 1)
+    // Non-blocking button check
+    if (digitalRead(BUTTON) == 1)
     {
+      buttonPressed = true;
       blinkOrange(0, 150, 0);
       delay(100);
-      count = true;
     }
 
-    if (count)
+    if (buttonPressed && digitalRead(BUTTON) == 0)
     {
+      // Button was released - exit immediately
       digitalWrite(BUZZER_PIN, LOW);
       delay(100);
       pixels.setPixelColor(0, pixels.Color(0, 0, 0));
       pixels.show();
       break;
     }
+
+    delay(50); // Small delay to prevent overwhelming the CPU
   }
 }
 

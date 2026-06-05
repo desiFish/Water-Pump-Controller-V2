@@ -157,6 +157,24 @@
       gap: 15px;
     }
 
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .button-row button,
+    .button-row a button {
+      width: 100%;
+      margin-top: 0;
+    }
+
+    .button-row a {
+      display: block;
+      text-decoration: none;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -361,10 +379,17 @@
 
       <button type="button" onclick="saveSettings()">Save Settings</button>
 
-      <button type="button" onclick="restartDevice()"
-        style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); margin-top: 10px;">
-        🔄 Restart ESP32
-      </button>
+      <div class="button-row">
+        <button type="button" onclick="restartDevice()"
+          style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">
+          🔄 Restart ESP32
+        </button>
+        <a href="/update">
+          <button type="button" style="background: linear-gradient(135deg, #00b894 0%, #00a883 100%);">
+            ⬆️ OTA Update
+          </button>
+        </a>
+      </div>
     </form>
 
     <script>
