@@ -79,10 +79,10 @@ EnergyMonitor emon1;
 #define TURN_ON_RELAY digitalWrite(PUMP_PIN, HIGH) // update this
 #define TURN_OFF_RELAY digitalWrite(PUMP_PIN, LOW) // update this
 
-/*5 is 5 seconds, you can assign any time value you wish.
+/*3 is 3 seconds, you can assign any time value you wish.
  This is given because it takes a while for the current consumption to get stable.
  And there are all sort of current and voltage spikes just after the pump is ON
- Giving it few seconds should stabilize the reading.*/
+ Giving it few seconds should stabilize the reading. Min. value of 3 secs is suggested.*/
 #define WAIT_AFTER_PUMP_ON 3
 
 #define NUM_LEDS 1
@@ -162,7 +162,7 @@ const char *autoRunTimeKeys[3][2] = {
     {"onTime3", "offTime3"}};
 int lastDay;
 byte doneForToday = 0, activeAutoRunPeriod = 0;
-bool autoRun;
+bool autoRun, isDisplayOn;
 String dateAndTime, currTime;
 // for holding water level (in %)
 byte holdData = 0;
@@ -180,6 +180,10 @@ long interval1 = 2000;             // interval to wait (milliseconds)
 // float update frequency
 unsigned long previousMillis2 = 0; // will store last time it was updated
 long interval2 = 1000;             // interval to wait (milliseconds)
+
+// Display auto-off feature (like smartphone)
+unsigned long displayAutoOffTime = 30000; // Display turns off after 30 seconds of inactivity (in milliseconds)
+unsigned long lastButtonPressTime = 0;    // Track when button was last pressed
 
 TaskHandle_t loop2Code;
 
@@ -290,7 +294,7 @@ void setup(void)
   delay(500);
   digitalWrite(BUZZER_PIN, LOW);
   pixels.begin();
-  pixels.setBrightness(20);
+  pixels.setBrightness(100);
   pixels.setPixelColor(0, pixels.Color(255, 0, 0));
   pixels.show();
 
@@ -586,32 +590,59 @@ void setup(void)
 
                 pref.begin("database", false);
 
-                pref.putInt("tankLow", data["tankLow"] | 0);
-                pref.putInt("tankFull", data["tankFull"] | 0);
+                tankLow = data["tankLow"] | 0;
+                pref.putInt("tankLow", tankLow);
 
-                pref.putFloat("ampLow", data["ampLow"] | 0.0);
-                pref.putFloat("ampMax", data["ampMax"] | 0.0);
+                tankFull = data["tankFull"] | 0;
+                pref.putInt("tankFull", tankFull);
 
-                pref.putBool("useUltrasonic", data["useUltrasonic"] | false);
-                pref.putBool("useSensors", data["useSensors"] | false);
-                pref.putBool("useFloat", data["useFloat"] | false);
-                pref.putBool("useWifi", data["useWifi"] | true);
+                ampLow = data["ampLow"] | 0.0;
+                pref.putFloat("ampLow", ampLow);
 
-                pref.putBool("autoRun", data["autoRun"] | false);
+                ampMax = data["ampMax"] | 0.0;
+                pref.putFloat("ampMax", ampMax);
 
-                pref.putString("apiKey", String((const char *)data["apiKey"]));
+                useUltrasonic = data["useUltrasonic"] | false;
+                pref.putBool("useUltrasonic", useUltrasonic);
 
-                pref.putString("ssid", String((const char *)data["ssid"]));
-                pref.putString("password", String((const char *)data["password"]));
+                useSensors = data["useSensors"] | false;
+                pref.putBool("useSensors", useSensors);
 
-                pref.putInt("onTime1", data["onTime1"] | 615);
-                pref.putInt("offTime1", data["offTime1"] | 730);
+                useFloat = data["useFloat"] | false;
+                pref.putBool("useFloat", useFloat);
 
-                pref.putInt("onTime2", data["onTime2"] | 1229);
-                pref.putInt("offTime2", data["offTime2"] | 1330);
+                useWifi = data["useWifi"] | true;
+                pref.putBool("useWifi", useWifi);
 
-                pref.putInt("onTime3", data["onTime3"] | 1615);
-                pref.putInt("offTime3", data["offTime3"] | 1715);
+                autoRun = data["autoRun"] | false;
+                pref.putBool("autoRun", autoRun);
+
+                apiKey = String((const char *)data["apiKey"]);
+                pref.putString("apiKey", apiKey);
+
+                ssid = String((const char *)data["ssid"]);
+                pref.putString("ssid", ssid);
+
+                password = String((const char *)data["password"]);
+                pref.putString("password", password);
+
+                autoRunTimes[0][0] = data["onTime1"] | 615;
+                pref.putInt("onTime1", autoRunTimes[0][0]);
+
+                autoRunTimes[0][1] = data["offTime1"] | 730;
+                pref.putInt("offTime1", autoRunTimes[0][1]);
+
+                autoRunTimes[1][0] = data["onTime2"] | 1229;
+                pref.putInt("onTime2", autoRunTimes[1][0]);
+
+                autoRunTimes[1][1] = data["offTime2"] | 1330;
+                pref.putInt("offTime2", autoRunTimes[1][1]);
+
+                autoRunTimes[2][0] = data["onTime3"] | 1615;
+                pref.putInt("onTime3", autoRunTimes[2][0]);
+
+                autoRunTimes[2][1] = data["offTime3"] | 1715;
+                pref.putInt("offTime3", autoRunTimes[2][1]);
 
                 pref.end();
 
@@ -747,6 +778,9 @@ void setup(void)
 
   emon1.current(CURRENT_SENSOR_PIN, 27); // Current: input pin, calibration.
   analogReadResolution(10);              // read resolution (10=10 bits)
+
+  // Initialize display auto-off timer - set to current time so display stays on initially
+  lastButtonPressTime = millis();
 
   // create a task that will be executed in the loop2() function, with priority 1 and executed on core 0
   xTaskCreatePinnedToCore(
@@ -895,6 +929,23 @@ void loop2(void *pvParameters)
         }
       }
     }
+
+    // =========================
+    // Display auto-off timer
+    // =========================
+    // Keep display on if pump is running or within timeout period
+    unsigned long timeSinceLastPress = currentMillis - lastButtonPressTime;
+    if (isPumpRunning || timeSinceLastPress < displayAutoOffTime)
+    {
+      // Keep display on
+      displayPower(true);
+    }
+    else
+    {
+      // Turn display off
+      displayPower(false);
+    }
+
     vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
@@ -990,15 +1041,21 @@ void loop(void)
       display.display();
     }
   }
-
   // long press to activate menu
   byte count = 0;
   if (digitalRead(BUTTON) == HIGH)
   {
+    // Reset display auto-off timer
+    lastButtonPressTime = millis();
+    if (!isDisplayOn)
+    {
+      delay(500); // Debounce delay
+    }
+
     while (digitalRead(BUTTON) == HIGH)
     {
       count++;
-      if (count >= 1 && count <= 30)
+      if (count >= 1 && count <= 20)
       {
         blinkOrange(1, 20, 50);
       }
@@ -1010,7 +1067,7 @@ void loop(void)
       delay(50);
     }
 
-    pixels.setBrightness(20);
+    pixels.setBrightness(100);
     pixels.setPixelColor(0, pixels.Color(0, 0, 0));
     pixels.show();
 
@@ -1025,6 +1082,24 @@ void loop(void)
   }
 }
 
+/**
+ * @brief Controls the power state of the display
+ *
+ * @param on If true, turns the display on; if false, turns it off
+ *
+ * This function sends the appropriate I2C commands to the display to control its power state.
+ */
+void displayPower(bool on)
+{
+  Wire.beginTransmission(0x3C);
+  Wire.write(0x00);
+  if (on)
+    Wire.write(0xAF); // Display ON
+  else
+    Wire.write(0xAE); // Display OFF
+  Wire.endTransmission();
+  on ? isDisplayOn = true : isDisplayOn = false;
+}
 /**
  * @brief Centralized pump start control
  *
@@ -1120,7 +1195,8 @@ void pumpRunSequence(bool flag)
     if ((!stopMode && flag) || digitalRead(BUTTON) == 1)
     {
       while (digitalRead(BUTTON) == 1)
-      {
+      { // Reset display auto-off timer
+        lastButtonPressTime = millis();
         count++;
         if (count >= 1 && count <= 8)
         {
@@ -1140,7 +1216,7 @@ void pumpRunSequence(bool flag)
         option = 2;
       }
 
-      pixels.setBrightness(20);
+      // pixels.setBrightness(20);
       pixels.setPixelColor(0, pixels.Color(0, 0, 0));
       pixels.show();
 
@@ -1234,7 +1310,8 @@ String formatElapsedTime(time_t elapsedSeconds)
  * after the pump is turned on, allowing the current to stabilize before safety checks.
  */
 void pumpOnDelay()
-{
+{ // Reset display auto-off timer
+  lastButtonPressTime = millis();
   for (byte secondsLeft = WAIT_AFTER_PUMP_ON; secondsLeft > 0; secondsLeft--)
   {
     display.clearDisplay();
@@ -1263,8 +1340,8 @@ void pumpOnDelay()
  * During the countdown, the user can press the button to cancel the auto-start.
  */
 void runPumpAuto()
-{
-  raiseAlert = 0;
+{ // Reset display auto-off timer
+  lastButtonPressTime = millis();
   for (byte secondsLeft = 10; secondsLeft > 0 && !isPumpRunning; secondsLeft--)
   {
     display.clearDisplay();
@@ -1589,7 +1666,8 @@ void menu(void)
     display.display();
 
     if (digitalRead(BUTTON) == 1)
-    {
+    { // Reset display auto-off timer
+      lastButtonPressTime = millis();
       while (digitalRead(BUTTON) == 1)
       {
         count++;
@@ -1605,7 +1683,7 @@ void menu(void)
         delay(60);
       }
 
-      pixels.setBrightness(20);
+      // pixels.setBrightness(100);
       pixels.setPixelColor(0, pixels.Color(0, 0, 0));
       pixels.show();
 
@@ -1702,7 +1780,8 @@ void configurations()
     display.display();
 
     if (digitalRead(BUTTON) == 1)
-    {
+    { // Reset display auto-off timer
+      lastButtonPressTime = millis();
       while (digitalRead(BUTTON) == 1)
       {
         count++;
@@ -1718,7 +1797,7 @@ void configurations()
         delay(50);
       }
 
-      pixels.setBrightness(20);
+      // pixels.setBrightness(100);
       pixels.setPixelColor(0, pixels.Color(0, 0, 0));
       pixels.show();
 
@@ -1778,7 +1857,8 @@ void configurations()
       display.display();
 
       if (digitalRead(BUTTON) == 1)
-      {
+      { // Reset display auto-off timer
+        lastButtonPressTime = millis();
         while (digitalRead(BUTTON) == 1)
         {
           count++;
@@ -1794,7 +1874,7 @@ void configurations()
           delay(50);
         }
 
-        pixels.setBrightness(20);
+        // pixels.setBrightness(100);
         pixels.setPixelColor(0, pixels.Color(0, 0, 0));
         pixels.show();
 
@@ -1880,7 +1960,7 @@ bool autoTimeUpdate()
 void resetWifi()
 {
   byte count = 0, option = 1;
-  pixels.setBrightness(150);
+  pixels.setBrightness(250);
   pixels.setPixelColor(0, pixels.Color(255, 0, 0));
   pixels.show();
   while (true)
@@ -1916,7 +1996,8 @@ void resetWifi()
     display.display();
 
     if (digitalRead(BUTTON) == 1)
-    {
+    { // Reset display auto-off timer
+      lastButtonPressTime = millis();
       while (digitalRead(BUTTON) == 1)
       {
         count++;
@@ -1932,7 +2013,7 @@ void resetWifi()
         delay(50);
       }
 
-      pixels.setBrightness(20);
+      // pixels.setBrightness(100);
       pixels.setPixelColor(0, pixels.Color(0, 0, 0));
       pixels.show();
 
@@ -1969,7 +2050,8 @@ Handles the completion of the pump operation, displaying appropriate messages ba
 * low ampere: err = 4
 */
 void handlePumpCompletion(byte code)
-{
+{ // Reset display auto-off timer
+  lastButtonPressTime = millis();
   display.clearDisplay();
   display.setTextColor(SH110X_WHITE);
   display.setTextSize(1);
@@ -2069,10 +2151,11 @@ void handlePumpCompletion(byte code)
 
     // Non-blocking button check
     if (digitalRead(BUTTON) == 1)
-    {
+    { // Reset display auto-off timer
+      lastButtonPressTime = millis();
       buttonPressed = true;
       blinkOrange(0, 150, 0);
-      delay(100);
+      delay(250);
     }
 
     if (buttonPressed && digitalRead(BUTTON) == 0)
