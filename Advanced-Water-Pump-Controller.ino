@@ -190,6 +190,7 @@ TaskHandle_t loop2Code;
 // Elegant OTA related task
 void onOTAStart()
 {
+  isDisplayOn = true;
   // Log when OTA has started
   updateInProgress = true;
   pixels.setBrightness(200);
@@ -258,6 +259,7 @@ void onOTAEnd(bool success)
   }
   // <Add your own code here>
   updateInProgress = false;
+  isDisplayOn = false;
 }
 
 // forward declaration
@@ -780,7 +782,6 @@ void setup(void)
   analogReadResolution(10);              // read resolution (10=10 bits)
 
   // Initialize display auto-off timer - set to current time so display stays on initially
-  lastButtonPressTime = millis();
 
   // create a task that will be executed in the loop2() function, with priority 1 and executed on core 0
   xTaskCreatePinnedToCore(
@@ -933,11 +934,11 @@ void loop2(void *pvParameters)
     // =========================
     // Display auto-off timer
     // =========================
-    // Keep display on if pump is running or within timeout period
+    // Turn off display if pump is not running, display is on, and it's been more than displayAutoOffTime since last button press
     unsigned long timeSinceLastPress = currentMillis - lastButtonPressTime;
-    if (isPumpRunning || timeSinceLastPress < displayAutoOffTime)
+    if (isDisplayOn || isPumpRunning || timeSinceLastPress < displayAutoOffTime)
     {
-      // Keep display on
+      // Turn display on
       displayPower(true);
     }
     else
@@ -964,21 +965,26 @@ void loop(void)
 
   if (raiseAlert == ALERT_AUTOSTART)
   {
+    isDisplayOn = true;
     raiseAlert = STATUS_OK;
     runPumpAuto();
+    isDisplayOn = false;
   }
 
   if (raiseAlert >= ALERT_TANK_FULL &&
       raiseAlert <= ALERT_UNDERCURRENT)
   {
+    isDisplayOn = true;
     handlePumpCompletion(raiseAlert);
     raiseAlert = STATUS_OK;
+    isDisplayOn = false;
   }
 
   if (!updateInProgress)
   {
     if (resetFlag) // after resetting (set in menu options; reset), esp32 will restart
     {
+      isDisplayOn = true;
       pixels.setPixelColor(0, pixels.Color(255, 0, 0));
       pixels.show();
       display.clearDisplay();
@@ -1045,17 +1051,17 @@ void loop(void)
   byte count = 0;
   if (digitalRead(BUTTON) == HIGH)
   {
-    // Reset display auto-off timer
-    lastButtonPressTime = millis();
+    lastButtonPressTime = millis(); // Update last button press time on each press to keep display on
     if (!isDisplayOn)
     {
       delay(500); // Debounce delay
+      isDisplayOn = true;
     }
 
     while (digitalRead(BUTTON) == HIGH)
     {
       count++;
-      if (count >= 1 && count <= 20)
+      if (count >= 1 && count <= 15)
       {
         blinkOrange(1, 20, 50);
       }
@@ -1071,26 +1077,32 @@ void loop(void)
     pixels.setPixelColor(0, pixels.Color(0, 0, 0));
     pixels.show();
 
-    if (count >= 1 && count <= 30)
+    if (count >= 1 && count <= 15)
     {
       pixels.setPixelColor(0, pixels.Color(255, 255, 0));
       pixels.show();
       pumpRunSequence();
     }
-    else
+    else if (count > 15)
       menu();
+    isDisplayOn = false;
   }
 }
 
 /**
- * @brief Controls the power state of the display
+ * @brief Controls the power state of the SH1106 OLED display
  *
  * @param on If true, turns the display on; if false, turns it off
  *
- * This function sends the appropriate I2C commands to the display to control its power state.
+ * This function sends I2C commands to control the display power state via the SH1106 controller.
+ * Optimized with early-return to avoid redundant I2C operations - only sends commands when
+ * the display state actually changes, reducing bus traffic and improving efficiency.
  */
 void displayPower(bool on)
 {
+  static bool currentState = true; // Assume display starts ON
+  if (currentState == on)
+    return; // No change needed
   Wire.beginTransmission(0x3C);
   Wire.write(0x00);
   if (on)
@@ -1098,7 +1110,7 @@ void displayPower(bool on)
   else
     Wire.write(0xAE); // Display OFF
   Wire.endTransmission();
-  on ? isDisplayOn = true : isDisplayOn = false;
+  currentState = on;
 }
 /**
  * @brief Centralized pump start control
@@ -1195,8 +1207,8 @@ void pumpRunSequence(bool flag)
     if ((!stopMode && flag) || digitalRead(BUTTON) == 1)
     {
       while (digitalRead(BUTTON) == 1)
-      { // Reset display auto-off timer
-        lastButtonPressTime = millis();
+      {
+
         count++;
         if (count >= 1 && count <= 8)
         {
@@ -1310,8 +1322,8 @@ String formatElapsedTime(time_t elapsedSeconds)
  * after the pump is turned on, allowing the current to stabilize before safety checks.
  */
 void pumpOnDelay()
-{ // Reset display auto-off timer
-  lastButtonPressTime = millis();
+{
+
   for (byte secondsLeft = WAIT_AFTER_PUMP_ON; secondsLeft > 0; secondsLeft--)
   {
     display.clearDisplay();
@@ -1340,8 +1352,8 @@ void pumpOnDelay()
  * During the countdown, the user can press the button to cancel the auto-start.
  */
 void runPumpAuto()
-{ // Reset display auto-off timer
-  lastButtonPressTime = millis();
+{
+
   for (byte secondsLeft = 10; secondsLeft > 0 && !isPumpRunning; secondsLeft--)
   {
     display.clearDisplay();
@@ -1645,7 +1657,7 @@ void menu(void)
     display.println("MENU");
     display.drawLine(0, 8, 127, 8, 1);
     display.setCursor(3, 13);
-    display.print("1. Configurations");
+    display.print("1. WIFI");
     display.setCursor(3, 27);
     display.print("2. Reset Wifi");
     display.setCursor(3, 41);
@@ -1666,8 +1678,8 @@ void menu(void)
     display.display();
 
     if (digitalRead(BUTTON) == 1)
-    { // Reset display auto-off timer
-      lastButtonPressTime = millis();
+    {
+
       while (digitalRead(BUTTON) == 1)
       {
         count++;
@@ -1696,7 +1708,7 @@ void menu(void)
       else
       {
         if (option == 1)
-          configurations();
+          powerWifi();
         else if (option == 2)
           resetWifi();
         else if (option == 3)
@@ -1742,7 +1754,7 @@ void blinkOrange(byte times, byte brightValue, int blinkDuration)
 }
 
 /**
- * @brief Displays the configuration menu for system settings
+ * @brief Displays the wifi power menu for wifi settings
  *
  * This function presents a menu-driven interface on the OLED display allowing users to
  * configure device settings such as WiFi connectivity. Users navigate through the menu
@@ -1750,7 +1762,7 @@ void blinkOrange(byte times, byte brightValue, int blinkDuration)
  * The function saves preference changes to persistent storage and triggers a device restart
  * when WiFi settings are modified.
  */
-void configurations()
+void powerWifi()
 {
   pref.begin("database", false);
   byte count = 0, option = 1;
@@ -1760,28 +1772,35 @@ void configurations()
     display.setTextSize(1);
     display.setFont(NULL);
     display.setCursor(0, 0);
-    display.println("Configurations");
+    display.println("WIFI");
     display.drawLine(0, 8, 127, 8, 1);
-
-    display.setCursor(3, 13);
-    display.print("1. WIFI");
-    display.setCursor(3, 27);
-    display.print("2. Exit");
 
     switch (option)
     {
     case 1:
-      display.drawRect(0, 10, 127, 13, 1);
+      display.setCursor(25, 40);
+      display.setTextColor(SH110X_BLACK, SH110X_WHITE);
+      display.fillRect(23, 39, 15, 10, 1);
+      display.print("ON");
+      display.setCursor(85, 40);
+      display.setTextColor(SH110X_WHITE);
+      display.print("OFF");
       break;
     case 2:
-      display.drawRect(0, 24, 127, 13, 1);
+      display.setCursor(25, 40);
+      display.setTextColor(SH110X_WHITE);
+      display.print("ON");
+      display.setCursor(85, 40);
+      display.setTextColor(SH110X_BLACK, SH110X_WHITE);
+      display.fillRect(83, 39, 21, 10, 1);
+      display.print("OFF");
+      display.setTextColor(SH110X_WHITE);
       break;
     }
     display.display();
 
     if (digitalRead(BUTTON) == 1)
-    { // Reset display auto-off timer
-      lastButtonPressTime = millis();
+    {
       while (digitalRead(BUTTON) == 1)
       {
         count++;
@@ -1801,7 +1820,7 @@ void configurations()
       pixels.setPixelColor(0, pixels.Color(0, 0, 0));
       pixels.show();
 
-      if (count >= 1 && count <= 6)
+      if (count >= 1 && count <= 2)
       {
         option++;
         if (option > 2)
@@ -1810,100 +1829,23 @@ void configurations()
       else
       {
         if (option == 1)
+        {
+          useWifi = true;
+          pref.putBool("useWifi", true);
           break;
+        }
         else if (option == 2)
-          return;
+        {
+          useWifi = false;
+          pref.putBool("useWifi", false);
+          break;
+        }
       }
     }
     count = 0;
+    resetFlag = true;
   }
-  if (option == 1)
-  {
-    if (useWifi)
-      option = 1;
-    else
-      option = 2;
-    while (true)
-    {
-      display.clearDisplay();
-      display.setTextSize(1);
-      display.setFont(NULL);
-      display.setCursor(0, 0);
-      display.println("WIFI");
-      display.drawLine(0, 8, 127, 8, 1);
 
-      switch (option)
-      {
-      case 1:
-        display.setCursor(25, 40);
-        display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-        display.fillRect(23, 39, 15, 10, 1);
-        display.print("ON");
-        display.setCursor(85, 40);
-        display.setTextColor(SH110X_WHITE);
-        display.print("OFF");
-        break;
-      case 2:
-        display.setCursor(25, 40);
-        display.setTextColor(SH110X_WHITE);
-        display.print("ON");
-        display.setCursor(85, 40);
-        display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-        display.fillRect(83, 39, 21, 10, 1);
-        display.print("OFF");
-        display.setTextColor(SH110X_WHITE);
-        break;
-      }
-      display.display();
-
-      if (digitalRead(BUTTON) == 1)
-      { // Reset display auto-off timer
-        lastButtonPressTime = millis();
-        while (digitalRead(BUTTON) == 1)
-        {
-          count++;
-          if (count >= 1 && count <= 6)
-          {
-            blinkOrange(1, 20);
-          }
-          else
-          {
-            blinkOrange(0, 150);
-            delay(100);
-          }
-          delay(50);
-        }
-
-        // pixels.setBrightness(100);
-        pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-        pixels.show();
-
-        if (count >= 1 && count <= 2)
-        {
-          option++;
-          if (option > 2)
-            option = 1;
-        }
-        else
-        {
-          if (option == 1)
-          {
-            useWifi = true;
-            pref.putBool("useWifi", true);
-            break;
-          }
-          else if (option == 2)
-          {
-            useWifi = false;
-            pref.putBool("useWifi", false);
-            break;
-          }
-        }
-      }
-      count = 0;
-      resetFlag = true;
-    }
-  }
   display.clearDisplay();
   pref.end();
 }
@@ -1996,8 +1938,8 @@ void resetWifi()
     display.display();
 
     if (digitalRead(BUTTON) == 1)
-    { // Reset display auto-off timer
-      lastButtonPressTime = millis();
+    {
+
       while (digitalRead(BUTTON) == 1)
       {
         count++;
@@ -2050,8 +1992,8 @@ Handles the completion of the pump operation, displaying appropriate messages ba
 * low ampere: err = 4
 */
 void handlePumpCompletion(byte code)
-{ // Reset display auto-off timer
-  lastButtonPressTime = millis();
+{
+
   display.clearDisplay();
   display.setTextColor(SH110X_WHITE);
   display.setTextSize(1);
@@ -2151,8 +2093,8 @@ void handlePumpCompletion(byte code)
 
     // Non-blocking button check
     if (digitalRead(BUTTON) == 1)
-    { // Reset display auto-off timer
-      lastButtonPressTime = millis();
+    {
+
       buttonPressed = true;
       blinkOrange(0, 150, 0);
       delay(250);
