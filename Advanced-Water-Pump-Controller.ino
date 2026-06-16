@@ -185,6 +185,10 @@ long interval2 = 1000;             // interval to wait (milliseconds)
 unsigned long displayAutoOffTime = 30000; // Display turns off after 30 seconds of inactivity (in milliseconds)
 unsigned long lastButtonPressTime = 0;    // Track when button was last pressed
 
+// Auto-start cooldown to prevent accidental button presses being registered immediately after auto-start
+unsigned long autoStartCompleteTime = 0;
+const unsigned long AUTO_START_COOLDOWN = 2000; // 2 seconds cooldown after auto-start completes
+
 TaskHandle_t loop2Code;
 
 // Elegant OTA related task
@@ -497,7 +501,7 @@ void setup(void)
 
     // count variable stores the status of WiFi connection. 0 means NOT CONNECTED. 1 means CONNECTED
 
-    bool count = 1;
+    bool count = true;
     while (WiFi.waitForConnectResult() != WL_CONNECTED)
     {
       display.clearDisplay();
@@ -509,7 +513,7 @@ void setup(void)
       Serial.println("Connection Failed");
       delay(2000);
       // ESP.restart();
-      count = 0;
+      count = false;
       break;
     }
     if (count)
@@ -1049,7 +1053,12 @@ void loop(void)
   }
   // long press to activate menu
   byte count = 0;
-  if (digitalRead(BUTTON) == HIGH)
+
+  // Check auto-start cooldown before processing button presses
+  unsigned long currentTime = millis();
+  bool inAutoStartCooldown = (currentTime - autoStartCompleteTime) < AUTO_START_COOLDOWN;
+
+  if (digitalRead(BUTTON) == HIGH && !inAutoStartCooldown)
   {
     lastButtonPressTime = millis(); // Update last button press time on each press to keep display on
     if (!isDisplayOn)
@@ -1353,7 +1362,6 @@ void pumpOnDelay()
  */
 void runPumpAuto()
 {
-
   for (byte secondsLeft = 10; secondsLeft > 0 && !isPumpRunning; secondsLeft--)
   {
     display.clearDisplay();
@@ -1403,6 +1411,18 @@ void runPumpAuto()
     pixels.setPixelColor(0, pixels.Color(0, 0, 0));
     pixels.show();
   }
+
+  // Clean button state - ensure button is fully released before returning
+  while (digitalRead(BUTTON) == 1)
+  {
+    delay(10);
+    yield();
+  }
+  delay(100); // Small debounce delay
+
+  // Set cooldown flag to ignore button presses for 2 seconds after auto-start
+  autoStartCompleteTime = millis();
+
   pumpRunSequence(true);
 }
 
@@ -2038,16 +2058,16 @@ void handlePumpCompletion(byte code)
   resetTimer();
 
   pixels.setBrightness(250);
-  if (code == 2)
+  if (code == ALERT_TANK_FULL)
     pixels.setPixelColor(0, pixels.Color(0, 0, 255));
   else
     pixels.setPixelColor(0, pixels.Color(255, 0, 0));
 
   pixels.show();
 
-  // Non-blocking 1-minute timer for auto return to home screen
+  // Non-blocking 1-minute timer for auto return to home screen (only for ALERT_TANK_FULL)
   uint32_t messageStartTime = millis();
-  const uint32_t messageTimeout = 60000; // 60 seconds in milliseconds
+  const uint32_t messageTimeout = 180000; // 3 minutes in milliseconds
   bool buttonPressed = false;
 
   while (true)
@@ -2055,8 +2075,8 @@ void handlePumpCompletion(byte code)
     uint32_t elapsedTime = millis() - messageStartTime;
     uint32_t remainingSeconds = (messageTimeout - elapsedTime) / 1000;
 
-    // Check if 60 seconds have elapsed - auto exit
-    if (elapsedTime >= messageTimeout)
+    // Check if 60 seconds have elapsed - auto exit only for ALERT_TANK_FULL
+    if (code == ALERT_TANK_FULL && elapsedTime >= messageTimeout)
     {
       digitalWrite(BUZZER_PIN, LOW);
       delay(100);
@@ -2071,15 +2091,17 @@ void handlePumpCompletion(byte code)
     display.print("OKAY");
     display.setTextColor(SH110X_WHITE);
 
-    // Display remaining time
-    // display.setTextColor(SH110X_BLACK, SH110X_WHITE);
-    display.setCursor(57, 56);
-    display.fillRect(47, 55, 30, 10, 0);
-    display.print(remainingSeconds);
+    // Display remaining time only for ALERT_TANK_FULL
+    if (code == ALERT_TANK_FULL)
+    {
+      display.setCursor(57, 56);
+      display.fillRect(47, 55, 30, 10, 0);
+      display.print(remainingSeconds);
+    }
     display.setTextColor(SH110X_WHITE);
 
     display.display();
-    if (code == 2)
+    if (code == ALERT_TANK_FULL)
     {
       digitalWrite(BUZZER_PIN, LOW);
       delay(100);
