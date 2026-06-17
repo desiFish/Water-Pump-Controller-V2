@@ -23,6 +23,7 @@
 - [Key Features & Capabilities](#-key-features--capabilities)
 - [Hardware Requirements](#-hardware)
 - [Web Interface & API](#-web-interface--api)
+- [Pictures & Schematics](#-pictures--schematics)
 - [Features](#-features)
 - [Data Logging System](#-data-logging-system)
 - [Calibration & Setup](#-calibration--setup)
