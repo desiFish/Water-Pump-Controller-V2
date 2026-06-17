@@ -26,6 +26,8 @@ Hardware:
 NOT USING CURRENTLY--> ZMPT101B Voltage Sensor
 */
 
+#define FW_VERSION "1.4.2" // firmware version
+
 // For basic ESP32 stuff like wifi, OTA Update and Wifi Manager Server
 #include <WiFi.h>
 #include <AsyncTCP.h>
@@ -656,6 +658,16 @@ void setup(void)
               });
       server.addHandler(handler);
 
+      server.on("/api/ping", HTTP_GET, [](AsyncWebServerRequest *request)
+                {
+                  DynamicJsonDocument doc(64);
+                  doc["status"] = "ok";
+                  
+                  String json;
+                  serializeJson(doc, json);
+                  
+                  request->send(200, "application/json", json); });
+
       server.on("/api/live", HTTP_GET, [](AsyncWebServerRequest *request)
                 {
     // Log live data request from browser
@@ -694,6 +706,14 @@ void setup(void)
                 {
                   request->send(LittleFS, "/settings.html", "text/html");
                 });
+
+      // Serve Favicon
+      server.on("/favicon.svg", HTTP_GET,
+                [](AsyncWebServerRequest *request)
+                {
+                  request->send(LittleFS, "/favicon.svg", "image/svg+xml");
+                });
+
       server.on("/api/rtc/sync", HTTP_OPTIONS,
                 [](AsyncWebServerRequest *request)
                 {
@@ -750,6 +770,18 @@ void setup(void)
                         "text/plain",
                         "RTC synchronization failed");
                   }
+                });
+
+      server.on("/api/version", HTTP_GET,
+                [](AsyncWebServerRequest *request)
+                {
+                  DynamicJsonDocument doc(128);
+                  doc["version"] = FW_VERSION;
+                  doc["fw_version"] = FW_VERSION;
+
+                  String json;
+                  serializeJson(doc, json);
+                  request->send(200, "application/json", json);
                 });
 
       server.on("/api/restart", HTTP_POST,

@@ -10,3 +10,4 @@ build/esp32.esp32.esp32/sdkconfig
 build/esp32.esp32.esp32/partitions.csv
 build/esp32.esp32.esp32/flash_args
 build/esp32.esp32.esp32/build.options.json
+notes.txt

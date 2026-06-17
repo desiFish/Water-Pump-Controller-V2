@@ -15,6 +15,21 @@
   </p>
 </div>
 
+---
+
+## 📑 Table of Contents
+
+- [Important Information](#ℹ️-important-information)
+- [Key Features & Capabilities](#-key-features--capabilities)
+- [Hardware Requirements](#-hardware)
+- [Web Interface & API](#-web-interface--api)
+- [Features](#-features)
+- [Data Logging System](#-data-logging-system)
+- [Calibration & Setup](#-calibration--setup)
+- [License](#-license)
+
+---
+
 <div align="center">
   <table>
     <tr>
@@ -129,6 +144,196 @@
 | 10.  | Wires, connectors, etc | According to your need |
 | 11.  | Fotek 100Amps SSR | Now that pump runs via contactor, a small 6A mechanical relay or 2A Omron solid state relay can be used instead |
 | 12.  | Schneider LC1E1210M7 Contactor (220V AC coil) | [Product Link](https://www.se.com/in/en/product/LC1E1210M7/easy-tesys-contactor-3p3-no-ac3-440-v-12a-220-v-ac-coil/) - Upgraded from SSR for better reliability |
+</div>
+
+<div style="background-color: #E3F2FD; padding: 20px; border-radius: 10px; margin-top: 20px;">
+
+## 🌐 Web Interface & API
+
+The controller provides a comprehensive web-based interface and REST API for remote monitoring and configuration.
+
+### 📱 Web Interface
+- **Primary URL:** `http://<esp32-ip>/settings`
+- **Alternative URL:** `http://<esp32-ip>/` (root, serves settings)
+- **Features:**
+  - 🔌 Connectivity Status (checks every 4 seconds)
+  - 📊 Real-time Live Data Dashboard
+  - ⚙️ Settings Configuration
+  - 🕐 RTC Time Management
+  - 📦 OTA Firmware Updates
+  - 🔄 System Restart Control
+
+### 🔌 REST API Endpoints
+
+#### 1️⃣ **Connectivity Check** `GET /api/ping`
+<table>
+<tr><td colspan="2"><b>Purpose:</b> Check if ESP32 is online and responding</td></tr>
+<tr><td><b>Method:</b></td><td>GET</td></tr>
+<tr><td><b>Response:</b></td><td><code>{"status": "ok"}</code></td></tr>
+<tr><td><b>Status Code:</b></td><td>200 (Success)</td></tr>
+<tr><td><b>Polling Interval:</b></td><td>4 seconds</td></tr>
+<tr><td><b>Example:</b></td><td><code>curl http://192.168.1.100/api/ping</code></td></tr>
+</table>
+
+#### 2️⃣ **Live Data** `GET /api/live`
+<table>
+<tr><td colspan="2"><b>Purpose:</b> Fetch real-time sensor readings and system status</td></tr>
+<tr><td><b>Method:</b></td><td>GET</td></tr>
+<tr><td><b>Response:</b></td><td colspan="1">
+<pre>{
+  "tankPercent": 75,              // Tank level percentage (0-100)
+  "ultrasonicDistance": 65,       // Distance in cm from sensor
+  "liveAmp": 2.45,                // Current consumption in Amperes
+  "floatSensor": true,            // Float switch state
+  "pumpRunning": true,            // Pump status
+  "tankLow": 300,                 // Tank empty threshold (cm)
+  "tankFull": 100,                // Tank full threshold (cm)
+  "time": "14:30:45",             // Current time
+  "dateTime": "2024-06-17 14:30:45", // Full timestamp
+  "wifiRSSI": -65,                // WiFi signal strength (dBm)
+  "wifiConnected": true           // WiFi connection status
+}</pre>
+</td></tr>
+<tr><td><b>Status Code:</b></td><td>200 (Success)</td></tr>
+<tr><td><b>Update Rate:</b></td><td>1 second (frontend polling)</td></tr>
+</table>
+
+#### 3️⃣ **Get Settings** `GET /api/settings`
+<table>
+<tr><td colspan="2"><b>Purpose:</b> Retrieve all system settings and configuration</td></tr>
+<tr><td><b>Method:</b></td><td>GET</td></tr>
+<tr><td><b>Response:</b></td><td colspan="1">
+<pre>{
+  "tankLow": 300,                 // Tank empty distance (cm)
+  "tankFull": 100,                // Tank full distance (cm)
+  "ampLow": 0.5,                  // Minimum current threshold (A)
+  "ampMax": 5.0,                  // Maximum current threshold (A)
+  "useUltrasonic": true,          // Enable ultrasonic sensor
+  "useSensors": true,             // Enable current sensor
+  "useFloat": true,               // Enable float sensor
+  "useWifi": true,                // Enable WiFi connectivity
+  "autoRun": false,               // Enable auto-run schedule
+  "apiKey": "your-key",           // Google Sheets API key
+  "ssid": "network-name",         // WiFi SSID
+  "password": "wifi-password",    // WiFi password
+  "onTime1": 615,                 // Schedule 1 ON time (HHMM)
+  "offTime1": 730,                // Schedule 1 OFF time (HHMM)
+  "onTime2": 1229,                // Schedule 2 ON time (HHMM)
+  "offTime2": 1330,               // Schedule 2 OFF time (HHMM)
+  "onTime3": 1615,                // Schedule 3 ON time (HHMM)
+  "offTime3": 1715                // Schedule 3 OFF time (HHMM)
+}</pre>
+</td></tr>
+<tr><td><b>Status Code:</b></td><td>200 (Success)</td></tr>
+</table>
+
+#### 4️⃣ **Save Settings** `POST /api/settings`
+<table>
+<tr><td colspan="2"><b>Purpose:</b> Update and persist system settings</td></tr>
+<tr><td><b>Method:</b></td><td>POST</td></tr>
+<tr><td><b>Content-Type:</b></td><td>application/json</td></tr>
+<tr><td><b>Request Body:</b></td><td colspan="1">
+Same structure as GET /api/settings response
+</td></tr>
+<tr><td><b>Response:</b></td><td><code>"Settings Saved"</code> (plain text)</td></tr>
+<tr><td><b>Content-Type:</b></td><td>text/plain</td></tr>
+<tr><td><b>Status Code:</b></td><td>200 (Success)</td></tr>
+<tr><td><b>Example:</b></td><td colspan="1">
+<pre>curl -X POST http://192.168.1.100/api/settings \
+  -H "Content-Type: application/json" \
+  -d '{"tankLow": 300, "tankFull": 100}'</pre>
+</td></tr>
+</table>
+
+#### 5️⃣ **Get Firmware Version** `GET /api/version`
+<table>
+<tr><td colspan="2"><b>Purpose:</b> Retrieve firmware version information</td></tr>
+<tr><td><b>Method:</b></td><td>GET</td></tr>
+<tr><td><b>Response:</b></td><td><code>{"version": "1.4.2", "fw_version": "1.4.2"}</code></td></tr>
+<tr><td><b>Status Code:</b></td><td>200 (Success)</td></tr>
+</table>
+
+#### 6️⃣ **Sync RTC - Browser Time** `POST /api/rtc/sync`
+<table>
+<tr><td colspan="2"><b>Purpose:</b> Synchronize ESP32 RTC with browser time</td></tr>
+<tr><td><b>Method:</b></td><td>POST (OPTIONS preflight supported)</td></tr>
+<tr><td><b>Content-Type:</b></td><td>application/json</td></tr>
+<tr><td><b>Request Body:</b></td><td colspan="1">
+<pre>{
+  "year": 2024,
+  "month": 6,
+  "day": 17,
+  "hour": 14,
+  "minute": 30,
+  "second": 45
+}</pre>
+</td></tr>
+<tr><td><b>Response:</b></td><td><code>"Received by ESP32"</code> (plain text)</td></tr>
+<tr><td><b>Status Code:</b></td><td>200 (Success)</td></tr>
+</table>
+
+#### 7️⃣ **Sync RTC - WiFi NTP** `POST /api/rtc/update`
+<table>
+<tr><td colspan="2"><b>Purpose:</b> Synchronize ESP32 RTC with NTP server via WiFi</td></tr>
+<tr><td><b>Method:</b></td><td>POST</td></tr>
+<tr><td><b>Request Body:</b></td><td>Empty (no parameters required)</td></tr>
+<tr><td><b>Success Response:</b></td><td><code>"RTC synchronized successfully"</code></td></tr>
+<tr><td><b>Error Response:</b></td><td><code>"RTC synchronization failed"</code></td></tr>
+<tr><td><b>Status Code:</b></td><td>200 (Success) / 500 (Error)</td></tr>
+<tr><td><b>Requirements:</b></td><td>WiFi must be connected to Internet</td></tr>
+</table>
+
+#### 8️⃣ **Restart Device** `POST /api/restart`
+<table>
+<tr><td colspan="2"><b>Purpose:</b> Trigger ESP32 system restart</td></tr>
+<tr><td><b>Method:</b></td><td>POST</td></tr>
+<tr><td><b>Request Body:</b></td><td>Empty</td></tr>
+<tr><td><b>Response:</b></td><td><code>"Device restarting..."</code></td></tr>
+<tr><td><b>Status Code:</b></td><td>200 (Success)</td></tr>
+<tr><td><b>⚠️ Note:</b></td><td>Device will be unavailable for ~5 seconds</td></tr>
+</table>
+
+### 🔗 Usage Examples
+
+**JavaScript Fetch:**
+```javascript
+// Check connectivity
+const response = await fetch('http://192.168.1.100/api/ping');
+const data = await response.json();
+console.log(data.status); // "ok"
+
+// Get live data
+const liveData = await fetch('http://192.168.1.100/api/live');
+const live = await liveData.json();
+console.log(`Tank Level: ${live.tankPercent}%`);
+```
+
+**Python Requests:**
+```python
+import requests
+
+# Get settings
+response = requests.get('http://192.168.1.100/api/settings')
+settings = response.json()
+
+# Save settings
+new_settings = settings.copy()
+new_settings['tankLow'] = 320
+response = requests.post('http://192.168.1.100/api/settings', json=new_settings)
+```
+
+**cURL:**
+```bash
+# Ping device
+curl http://192.168.1.100/api/ping
+
+# Get live data
+curl http://192.168.1.100/api/live | jq
+
+# Restart device
+curl -X POST http://192.168.1.100/api/restart
+```
+
 </div>
 
 <div style="background-color: #FEF9E7; padding: 20px; border-radius: 10px; margin-top: 20px;">

@@ -5,6 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Pump Controller Settings</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     * {
       margin: 0;
@@ -229,6 +230,32 @@
       border-radius: 4px;
     }
 
+    footer {
+      text-align: center;
+      margin-top: 50px;
+      padding: 20px 20px 0px 20px;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 0.9em;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    footer a {
+      color: #fff;
+      text-decoration: none;
+      font-weight: 500;
+      transition: opacity 0.3s ease;
+    }
+
+    footer a:hover {
+      opacity: 0.7;
+      text-decoration: underline;
+    }
+
+    footer .version-info {
+      margin-bottom: 10px;
+      font-family: 'Courier New', monospace;
+    }
+
     @media (max-width: 600px) {
 
       h1,
@@ -254,6 +281,10 @@
       <h3>Live Status</h3>
 
       <table style="width:100%">
+        <tr>
+          <td>Connectivity</td>
+          <td id="connectivityStatus" style="font-weight: bold; color: red;">Error</td>
+        </tr>
         <tr>
           <td>Pump</td>
           <td id="pumpRunningLive">-</td>
@@ -391,205 +422,270 @@
         </a>
       </div>
     </form>
+    <footer>
+      <div class="version-info">
+        Firmware Version: <span id="fwVersion">Loading...</span> | Software Version: <span
+          id="swVersion">Loading...</span>
+      </div>
+      <div>
+        © <a href="https://github.com/desiFish" target="_blank">desiFish</a> | Made with ❤️ in India
+      </div>
+      <div style="margin-top: 8px; font-size: 0.85em; font-style: italic;">
+        Om Namo Narayana
+      </div>
+    </footer>
+  </div>
 
-    <script>
-      async function loadSettings() {
-        const r = await fetch('/api/settings');
-        const s = await r.json();
+  <script>
+    // Software Version
+    const SOFTWARE_VERSION = '1.0.0';
+    let FIRMWARE_VERSION = 'Loading...';
 
-        Object.keys(s).forEach(k => {
-          let el = document.getElementById(k);
-          if (!el) return;
-          if (el.type === "checkbox") el.checked = s[k];
-          else el.value = s[k];
-        });
+    async function loadSettings() {
+      const r = await fetch('/api/settings');
+      const s = await r.json();
+
+      Object.keys(s).forEach(k => {
+        let el = document.getElementById(k);
+        if (!el) return;
+        if (el.type === "checkbox") el.checked = s[k];
+        else el.value = s[k];
+      });
+    }
+
+    async function saveSettings() {
+      const data = {
+        tankLow: +tankLow.value,
+        tankFull: +tankFull.value,
+        ampLow: +ampLow.value,
+        ampMax: +ampMax.value,
+        useUltrasonic: useUltrasonic.checked,
+        useSensors: useSensors.checked,
+        useFloat: useFloat.checked,
+        useWifi: useWifi.checked,
+        autoRun: autoRun.checked,
+        onTime1: +onTime1.value,
+        offTime1: +offTime1.value,
+        onTime2: +onTime2.value,
+        offTime2: +offTime2.value,
+        onTime3: +onTime3.value,
+        offTime3: +offTime3.value,
+        apiKey: apiKey.value,
+        ssid: ssid.value,
+        password: password.value
+      };
+
+      const r = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const response = await r.text();
+      if (r.ok) {
+        alert(response);
+      } else {
+        alert('Error: ' + response);
       }
+    }
 
-      async function saveSettings() {
-        const data = {
-          tankLow: +tankLow.value,
-          tankFull: +tankFull.value,
-          ampLow: +ampLow.value,
-          ampMax: +ampMax.value,
-          useUltrasonic: useUltrasonic.checked,
-          useSensors: useSensors.checked,
-          useFloat: useFloat.checked,
-          useWifi: useWifi.checked,
-          autoRun: autoRun.checked,
-          onTime1: +onTime1.value,
-          offTime1: +offTime1.value,
-          onTime2: +onTime2.value,
-          offTime2: +offTime2.value,
-          onTime3: +onTime3.value,
-          offTime3: +offTime3.value,
-          apiKey: apiKey.value,
-          ssid: ssid.value,
-          password: password.value
-        };
+    loadSettings();
 
-        const r = await fetch('/api/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+    async function checkConnectivity() {
+      try {
+        const r = await fetch('/api/ping', {
+          method: 'GET',
+          signal: AbortSignal.timeout(3000)
         });
-        const response = await r.text();
         if (r.ok) {
-          alert(response);
+          document.getElementById('connectivityStatus').innerHTML = 'Okay';
+          document.getElementById('connectivityStatus').style.color = 'green';
         } else {
-          alert('Error: ' + response);
+          document.getElementById('connectivityStatus').innerHTML = 'Error';
+          document.getElementById('connectivityStatus').style.color = 'red';
         }
+      } catch (e) {
+        console.log('Connectivity check failed:', e);
+        document.getElementById('connectivityStatus').innerHTML = 'Error';
+        document.getElementById('connectivityStatus').style.color = 'red';
+      }
+    }
+
+    // Check connectivity every 4 seconds
+    setInterval(checkConnectivity, 4000);
+    checkConnectivity();
+
+    async function loadLiveData() {
+      try {
+        const r = await fetch('/api/live');
+        const d = await r.json();
+
+        document.getElementById('pumpRunningLive').innerHTML =
+          d.pumpRunning ? 'RUNNING' : 'STOPPED';
+
+        document.getElementById('tankPercentLive').innerHTML =
+          d.tankPercent + ' %';
+
+        document.getElementById('distanceLive').innerHTML =
+          d.ultrasonicDistance + ' cm';
+
+        document.getElementById('ampLive').innerHTML =
+          Number(d.liveAmp).toFixed(2) + ' A';
+
+        document.getElementById('floatLive').innerHTML =
+          d.floatSensor ? 'FULL' : 'NOT FULL';
+
+        document.getElementById('wifiLive').innerHTML =
+          d.wifiConnected ? 'CONNECTED' : 'DISCONNECTED';
+
+        document.getElementById('rssiLive').innerHTML =
+          d.wifiRSSI + ' dBm';
+
+        document.getElementById('timeLive').innerHTML =
+          d.dateTime;
+
+        document.getElementById('pumpRunningLive').style.color =
+          d.pumpRunning ? 'green' : 'red';
+
+        document.getElementById('floatLive').style.color =
+          d.floatSensor ? 'green' : 'orange';
+
+        document.getElementById('tankBar').value = d.tankPercent;
+      }
+      catch (e) {
+        console.log(e);
+      }
+    }
+
+    setInterval(loadLiveData, 1000);
+    loadLiveData();
+
+    function togglePasswordVisibility() {
+      const passwordField = document.getElementById('password');
+      const button = document.querySelector('.password-toggle');
+
+      if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        button.textContent = '🙈';
+      } else {
+        passwordField.type = 'password';
+        button.textContent = '👁️';
+      }
+    }
+
+    async function syncRtcFromBrowserTime() {
+      const now = new Date();
+
+      const data = {
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+        day: now.getDate(),
+        hour: now.getHours(),
+        minute: now.getMinutes(),
+        second: now.getSeconds()
+      };
+
+      const r = await fetch('/api/rtc/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      alert(await r.text());
+    }
+
+    async function setManualRtc() {
+      const dt = document.getElementById("manualRtc").value;
+
+      if (!dt) {
+        alert("Select date and time first");
+        return;
       }
 
-      loadSettings();
+      const d = new Date(dt);
 
-      async function loadLiveData() {
-        try {
-          const r = await fetch('/api/live');
-          const d = await r.json();
+      const data = {
+        year: d.getFullYear(),
+        month: d.getMonth() + 1,
+        day: d.getDate(),
+        hour: d.getHours(),
+        minute: d.getMinutes(),
+        second: 0
+      };
 
-          document.getElementById('pumpRunningLive').innerHTML =
-            d.pumpRunning ? 'RUNNING' : 'STOPPED';
+      const r = await fetch('/api/rtc/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
 
-          document.getElementById('tankPercentLive').innerHTML =
-            d.tankPercent + ' %';
-
-          document.getElementById('distanceLive').innerHTML =
-            d.ultrasonicDistance + ' cm';
-
-          document.getElementById('ampLive').innerHTML =
-            Number(d.liveAmp).toFixed(2) + ' A';
-
-          document.getElementById('floatLive').innerHTML =
-            d.floatSensor ? 'FULL' : 'NOT FULL';
-
-          document.getElementById('wifiLive').innerHTML =
-            d.wifiConnected ? 'CONNECTED' : 'DISCONNECTED';
-
-          document.getElementById('rssiLive').innerHTML =
-            d.wifiRSSI + ' dBm';
-
-          document.getElementById('timeLive').innerHTML =
-            d.dateTime;
-
-          document.getElementById('pumpRunningLive').style.color =
-            d.pumpRunning ? 'green' : 'red';
-
-          document.getElementById('floatLive').style.color =
-            d.floatSensor ? 'green' : 'orange';
-
-          document.getElementById('tankBar').value = d.tankPercent;
-        }
-        catch (e) {
-          console.log(e);
-        }
-      }
-
-      setInterval(loadLiveData, 1000);
-      loadLiveData();
-
-      function togglePasswordVisibility() {
-        const passwordField = document.getElementById('password');
-        const button = document.querySelector('.password-toggle');
-
-        if (passwordField.type === 'password') {
-          passwordField.type = 'text';
-          button.textContent = '🙈';
-        } else {
-          passwordField.type = 'password';
-          button.textContent = '👁️';
-        }
-      }
-
-      async function syncRtcFromBrowserTime() {
-        const now = new Date();
-
-        const data = {
-          year: now.getFullYear(),
-          month: now.getMonth() + 1,
-          day: now.getDate(),
-          hour: now.getHours(),
-          minute: now.getMinutes(),
-          second: now.getSeconds()
-        };
-
-        const r = await fetch('/api/rtc/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+      alert(await r.text());
+    }
+    async function syncRtcFromWiFi() {
+      try {
+        const r = await fetch('/api/rtc/update', {
+          method: 'POST'
         });
 
-        alert(await r.text());
-      }
+        const msg = await r.text();
 
-      async function setManualRtc() {
-        const dt = document.getElementById("manualRtc").value;
-
-        if (!dt) {
-          alert("Select date and time first");
-          return;
+        if (r.ok) {
+          alert("Done: " + msg);
         }
-
-        const d = new Date(dt);
-
-        const data = {
-          year: d.getFullYear(),
-          month: d.getMonth() + 1,
-          day: d.getDate(),
-          hour: d.getHours(),
-          minute: d.getMinutes(),
-          second: 0
-        };
-
-        const r = await fetch('/api/rtc/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-
-        alert(await r.text());
+        else {
+          alert("Error: " + msg);
+        }
       }
-      async function syncRtcFromWiFi() {
+      catch (err) {
+        alert("Connection to controller failed");
+        console.error(err);
+      }
+    }
+
+    async function restartDevice() {
+      if (confirm("Are you sure you want to restart the ESP32? The device will be unavailable for a few seconds.")) {
         try {
-          const r = await fetch('/api/rtc/update', {
+          const r = await fetch('/api/restart', {
             method: 'POST'
           });
 
-          const msg = await r.text();
-
           if (r.ok) {
-            alert("Done: " + msg);
+            alert("Restarting device...");
+          } else {
+            alert("Error: Failed to restart device");
           }
-          else {
-            alert("Error: " + msg);
-          }
-        }
-        catch (err) {
+        } catch (err) {
           alert("Connection to controller failed");
           console.error(err);
         }
       }
+    }
 
-      async function restartDevice() {
-        if (confirm("Are you sure you want to restart the ESP32? The device will be unavailable for a few seconds.")) {
-          try {
-            const r = await fetch('/api/restart', {
-              method: 'POST'
-            });
-
-            if (r.ok) {
-              alert("Restarting device...");
-            } else {
-              alert("Error: Failed to restart device");
-            }
-          } catch (err) {
-            alert("Connection to controller failed");
-            console.error(err);
-          }
+    // Fetch firmware version from ESP32
+    async function loadFirmwareVersion() {
+      try {
+        const r = await fetch('/api/version');
+        if (r.ok) {
+          const data = await r.json();
+          FIRMWARE_VERSION = data.version || data.fw_version || 'Unknown';
+        } else {
+          FIRMWARE_VERSION = 'Unknown';
         }
+      } catch (err) {
+        console.error('Failed to fetch firmware version:', err);
+        FIRMWARE_VERSION = 'Unknown';
       }
+      updateFooterVersions();
+    }
 
-    </script>
-  </div>
+    function updateFooterVersions() {
+      document.getElementById('fwVersion').textContent = FIRMWARE_VERSION;
+      document.getElementById('swVersion').textContent = SOFTWARE_VERSION;
+    }
+
+    loadFirmwareVersion();
+
+  </script>
+
 </body>
 
 </html>
