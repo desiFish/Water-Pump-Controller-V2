@@ -346,42 +346,70 @@ Check [Issues](https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Control
 
 <div style="background-color: #FEF9E7; padding: 20px; border-radius: 10px; margin-top: 20px;">
 
-## 📸 Pictures & Schematics [Update pending]
+## 📸 Pictures & Schematics
 <table style="width:100%; border-collapse: collapse; margin: 20px 0;">
   <tr>
     <td align="center" style="padding: 10px;">
-      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/SCH_Schematic1.png" alt="Schematics" style="max-width: 300px; height: auto;">
+      <img src="https://github.com/desiFish/Water-Pump-Controller-V2/blob/main/resource/SCH_Schematic1.png" alt="Schematics" style="max-width: 300px; height: auto;">
       <p style="margin-top: 5px; font-size: 0.9em;">Circuit Schematic</p>
     </td>
     <td align="center" style="padding: 10px;">
-      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x1.jpg" alt="Controller View 1" style="max-width: 300px; height: auto;">
+      <img src="https://github.com/desiFish/Water-Pump-Controller-V2/blob/main/resource/x1.jpg" alt="Controller View 1" style="max-width: 300px; height: auto;">
       <p style="margin-top: 5px; font-size: 0.9em;">Front View</p>
     </td>
     <td align="center" style="padding: 10px;">
-      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x2.jpg" alt="Controller View 2" style="max-width: 300px; height: auto;">
+      <img src="https://github.com/desiFish/Water-Pump-Controller-V2/blob/main/resource/x2.jpg" alt="Controller View 2" style="max-width: 300px; height: auto;">
       <p style="margin-top: 5px; font-size: 0.9em;">Front View 2</p>
     </td>
     <td align="center" style="padding: 10px;">
-      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x3.jpg" alt="Controller View 3" style="max-width: 300px; height: auto;">
+      <img src="https://github.com/desiFish/Water-Pump-Controller-V2/blob/main/resource/x3.jpg" alt="Controller View 3" style="max-width: 300px; height: auto;">
       <p style="margin-top: 5px; font-size: 0.9em;">Front View 3</p>
     </td>
   </tr>
   <tr>
     <td align="center" style="padding: 10px;">
-      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x4.jpg" alt="Controller View 4" style="max-width: 300px; height: auto;">
+      <img src="https://github.com/desiFish/Water-Pump-Controller-V2/blob/main/resource/x4.jpg" alt="Controller View 4" style="max-width: 300px; height: auto;">
       <p style="margin-top: 5px; font-size: 0.9em;">Full View</p>
     </td>
     <td align="center" style="padding: 10px;">
-      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x6.jpg" alt="Controller View 6" style="max-width: 300px; height: auto;">
+      <img src="https://github.com/desiFish/Water-Pump-Controller-V2/blob/main/resource/x6.jpg" alt="Controller View 6" style="max-width: 300px; height: auto;">
       <p style="margin-top: 5px; font-size: 0.9em;">Ultra Sonic</p>
     </td>
     <td align="center" style="padding: 10px;">
-      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x5.jpg" alt="Controller View 5" style="max-width: 300px; height: auto;">
+      <img src="https://github.com/desiFish/Water-Pump-Controller-V2/blob/main/resource/x5.jpg" alt="Controller View 5" style="max-width: 300px; height: auto;">
       <p style="margin-top: 5px; font-size: 0.9em;">Ultra Sonic USB</p>
     </td>    
     <td align="center" style="padding: 10px;">
-      <img src="https://github.com/KamadoTanjiro-beep/Advanced-Water-Pump-Controller/blob/main/resource/x7.jpg" alt="Controller View 7" style="max-width: 300px; height: auto;">
+      <img src="https://github.com/desiFish/Water-Pump-Controller-V2/blob/main/resource/x7.jpg" alt="Controller View 7" style="max-width: 300px; height: auto;">
       <p style="margin-top: 5px; font-size: 0.9em;">Complete Setup</p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/desiFish/Water-Pump-Controller-V2/blob/main/resource/x8.jpg" alt="Full View with Contactr Open" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">Full View with Contactr Open</p>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/desiFish/Water-Pump-Controller-V2/blob/main/resource/x9.jpg" alt="Full View with Contactor Covered" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">Full View with Contactr Covered</p>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/desiFish/Water-Pump-Controller-V2/blob/main/resource/x10.jpg" alt="OLED View" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">OLED View</p>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/desiFish/Water-Pump-Controller-V2/blob/main/resource/x11.png" alt="WebUI Desktop" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">WebUI Desktop</p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/desiFish/Water-Pump-Controller-V2/blob/main/resource/x12.png" alt="WebUI Mobile" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">WebUI Mobile</p>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <img src="https://github.com/desiFish/Water-Pump-Controller-V2/blob/main/resource/x13.avif" alt="US Module" style="max-width: 300px; height: auto;">
+      <p style="margin-top: 5px; font-size: 0.9em;">USonic Module</p>
     </td>
   </tr>
 </table>
