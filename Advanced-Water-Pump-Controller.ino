@@ -26,7 +26,8 @@ Hardware:
 NOT USING CURRENTLY--> ZMPT101B Voltage Sensor
 */
 
-#define FW_VERSION "1.4.2" // firmware version
+#define FW_VERSION "1.5.0" // firmware version
+#define SW_VERSION "1.1.0" // software version
 
 // For basic ESP32 stuff like wifi, OTA Update and Wifi Manager Server
 #include <WiFi.h>
@@ -137,20 +138,34 @@ const char *PARAM_INPUT_1 = "ssid";
 const char *PARAM_INPUT_2 = "pass";
 
 // variables tankLow for storing ultrasonic value for empty tank and tankFull for full level.
-int tankLow, tankFull, liveTankLevel;
+int tankLow, tankFull;
+volatile int liveTankLevel;
 // variables ampLow for lowest safe level and ampMax for safe ampere max value.
 float ampLow, ampMax;
-float liveAmp, sumAmp;
+volatile float liveAmp, sumAmp;
 int countAmp;
 // pump status
-bool isPumpRunning = false;
+volatile bool isPumpRunning = false;
 // float sensor status
-bool floatSensor = false;
+volatile bool floatSensor = false;
 // using sensors or not
 bool useUltrasonic, useSensors, useFloat, useWifi;
 bool resetFlag = false, updateInProgress = false;
 
 String errorCodeMessage[] = {"USR INTRPT", "TANK FULL", "HIGH AMPERE", "LOW AMPERE"};
+String firmwareErrorBuffer = "";
+
+void pushFirmwareAlert(const String &message)
+{
+  if (message.length() == 0)
+    return;
+
+  if (firmwareErrorBuffer.length() > 0)
+    firmwareErrorBuffer += "\n";
+
+  firmwareErrorBuffer += message;
+}
+
 // time and timer related variables
 byte timeHour, timeMinute;
 time_t pumpStartTime = 0; // timestamp when pump starts (for elapsed time calculation)
@@ -162,6 +177,9 @@ const char *autoRunTimeKeys[3][2] = {
     {"onTime1", "offTime1"},
     {"onTime2", "offTime2"},
     {"onTime3", "offTime3"}};
+bool autoRunEnabled[3] = {true, true, true};
+const char *autoRunEnabledKeys[3] = {
+    "autoRunEnabled1", "autoRunEnabled2", "autoRunEnabled3"};
 int lastDay;
 byte doneForToday = 0, activeAutoRunPeriod = 0;
 bool autoRun, isDisplayOn;
@@ -169,7 +187,7 @@ String dateAndTime, currTime;
 // for holding water level (in %)
 byte holdData = 0;
 // global error tracking variable, Core 0 updates it
-byte raiseAlert = 0;
+volatile byte raiseAlert = 0;
 
 // display update frequency
 unsigned long previousMillis = 0; // will store last time it was updated
@@ -186,10 +204,6 @@ long interval2 = 1000;             // interval to wait (milliseconds)
 // Display auto-off feature (like smartphone)
 unsigned long displayAutoOffTime = 30000; // Display turns off after 30 seconds of inactivity (in milliseconds)
 unsigned long lastButtonPressTime = 0;    // Track when button was last pressed
-
-// Auto-start cooldown to prevent accidental button presses being registered immediately after auto-start
-unsigned long autoStartCompleteTime = 0;
-const unsigned long AUTO_START_COOLDOWN = 2000; // 2 seconds cooldown after auto-start completes
 
 TaskHandle_t loop2Code;
 
@@ -272,7 +286,9 @@ void onOTAEnd(bool success)
 void drawTankLevel(byte);
 void blinkOrange(byte, byte, int = 50);
 bool autoTimeUpdate();
-void pumpRunSequence(bool = false);
+void pumpRunSequence();
+void initializeHardware();
+void loadControllerSettings();
 
 enum PumpStatus : byte
 {
@@ -294,95 +310,9 @@ enum PumpStatus : byte
  */
 void setup(void)
 {
-  Serial.begin(115200);
-  pinMode(PUMP_PIN, OUTPUT);
-  TURN_OFF_RELAY;
-  pinMode(BUZZER_PIN, OUTPUT);
-  digitalWrite(BUZZER_PIN, HIGH);
-  delay(500);
-  digitalWrite(BUZZER_PIN, LOW);
-  pixels.begin();
-  pixels.setBrightness(100);
-  pixels.setPixelColor(0, pixels.Color(255, 0, 0));
-  pixels.show();
-
-  // Initialize LittleFS for serving web files
-  if (!LittleFS.begin(true))
-  {
-    Serial.println("LittleFS Mount Failed");
-  }
-  else
-  {
-    Serial.println("LittleFS Mounted Successfully");
-  }
-
-  pinMode(BUTTON, INPUT);
+  initializeHardware();
   pref.begin("database", false);
-  display.begin(i2c_Address, true);
-  display.setContrast(0);
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SH110X_WHITE);
-  display.setFont(&FreeSerif9pt7b);
-  display.setCursor(5, 15);
-  display.println("INITIALIZING");
-  display.setCursor(37, 35);
-  display.println("PUMP");
-  display.setCursor(0, 55);
-  display.println(" CONTROLLER");
-  display.display();
-  delay(500);
-
-  // loading preset values from the memory
-  if (!pref.isKey("tankLow"))
-    pref.putInt("tankLow", 0);
-  if (!pref.isKey("tankFull"))
-    pref.putInt("tankFull", 0);
-  if (!pref.isKey("ampLow"))
-    pref.putFloat("ampLow", 0.0);
-  if (!pref.isKey("ampMax"))
-    pref.putFloat("ampMax", 0.0);
-  if (!pref.isKey("useUltrasonic"))
-    pref.putBool("useUltrasonic", false);
-  if (!pref.isKey("useSensors"))
-    pref.putBool("useSensors", false);
-  if (!pref.isKey("useFloat"))
-    pref.putBool("useFloat", false);
-  if (!pref.isKey("useWifi"))
-    pref.putBool("useWifi", true);
-  if (!pref.isKey("apiKey"))
-    pref.putString("apiKey", "");
-  if (!pref.isKey("doneToday"))
-    pref.putUChar("doneToday", 0);
-  if (!pref.isKey("lastDay"))
-    pref.putInt("lastDay", 0);
-  if (!pref.isKey("autoRun"))
-    pref.putBool("autoRun", false);
-  for (byte i = 0; i < 3; i++)
-  {
-    if (!pref.isKey(autoRunTimeKeys[i][0]))
-      pref.putInt(autoRunTimeKeys[i][0], autoRunTimes[i][0]);
-    if (!pref.isKey(autoRunTimeKeys[i][1]))
-      pref.putInt(autoRunTimeKeys[i][1], autoRunTimes[i][1]);
-  }
-
-  tankLow = pref.getInt("tankLow", 0);
-  tankFull = pref.getInt("tankFull", 0);
-  ampLow = pref.getFloat("ampLow", 0);
-  ampMax = pref.getFloat("ampMax", 0);
-  useUltrasonic = pref.getBool("useUltrasonic", false);
-  useSensors = pref.getBool("useSensors", false);
-  useFloat = pref.getBool("useFloat", false);
-  useWifi = pref.getBool("useWifi", true);
-  apiKey = pref.getString("apiKey", "");
-  doneForToday = pref.getUChar("doneToday", 0);
-  lastDay = pref.getInt("lastDay", 0);
-  autoRun = pref.getBool("autoRun", false);
-  for (byte i = 0; i < 3; i++)
-  {
-    autoRunTimes[i][0] = pref.getInt(autoRunTimeKeys[i][0], autoRunTimes[i][0]);
-    autoRunTimes[i][1] = pref.getInt(autoRunTimeKeys[i][1], autoRunTimes[i][1]);
-  }
+  loadControllerSettings();
 
   if (!rtc.begin())
   {
@@ -481,8 +411,12 @@ void setup(void)
         ESP.restart(); });
       server.begin();
       WiFi.onEvent(WiFiEvent);
-      while (true)
-        ;
+      while (!resetFlag)
+      {
+        delay(100);
+        yield();
+      }
+      return;
     }
 
     WiFi.mode(WIFI_STA);
@@ -501,10 +435,21 @@ void setup(void)
     display.println(" CONNECT");
     display.display();
 
-    // count variable stores the status of WiFi connection. 0 means NOT CONNECTED. 1 means CONNECTED
+    uint32_t wifiStart = millis();
+    const uint32_t wifiTimeout = 20000;
+    bool wifiConnected = false;
+    while (millis() - wifiStart < wifiTimeout)
+    {
+      if (WiFi.status() == WL_CONNECTED)
+      {
+        wifiConnected = true;
+        break;
+      }
+      delay(250);
+      yield();
+    }
 
-    bool count = true;
-    while (WiFi.waitForConnectResult() != WL_CONNECTED)
+    if (!wifiConnected)
     {
       display.clearDisplay();
       display.setCursor(10, 15);
@@ -514,11 +459,8 @@ void setup(void)
       display.display();
       Serial.println("Connection Failed");
       delay(2000);
-      // ESP.restart();
-      count = false;
-      break;
     }
-    if (count)
+    else
     {
       Serial.println(ssid);
       Serial.println(WiFi.localIP());
@@ -575,6 +517,9 @@ void setup(void)
 
           doc["onTime3"] = pref.getInt("onTime3", 1615);
           doc["offTime3"] = pref.getInt("offTime3", 1715);
+          doc["autoRunEnabled1"] = pref.getBool("autoRunEnabled1", true);
+          doc["autoRunEnabled2"] = pref.getBool("autoRunEnabled2", true);
+          doc["autoRunEnabled3"] = pref.getBool("autoRunEnabled3", true);
 
           String json;
           serializeJson(doc, json);
@@ -583,80 +528,111 @@ void setup(void)
 
           request->send(200, "application/json", json); });
 
-      // POST Settings API
-      AsyncCallbackJsonWebHandler *handler =
+      AsyncCallbackJsonWebHandler *settingsSectionHandler =
           new AsyncCallbackJsonWebHandler(
-              "/api/settings",
+              "/api/settings/section",
               [](AsyncWebServerRequest *request, JsonVariant &json)
               {
-                JsonObject data = json.as<JsonObject>();
+                JsonObject doc = json.as<JsonObject>();
+                String section = doc["section"] | "";
+                JsonObject payload = doc["data"].as<JsonObject>();
 
-                // Log received data from browser
-                Serial.println("Settings received from browser:");
-                serializeJson(data, Serial);
-                Serial.println();
+                if (section.length() == 0 || payload.isNull())
+                {
+                  request->send(400, "text/plain", "Invalid settings payload");
+                  return;
+                }
 
                 pref.begin("database", false);
 
-                tankLow = data["tankLow"] | 0;
-                pref.putInt("tankLow", tankLow);
+                if (section == "tankCalibration")
+                {
+                  tankLow = payload["tankLow"] | 0;
+                  tankFull = payload["tankFull"] | 0;
+                  pref.putInt("tankLow", tankLow);
+                  pref.putInt("tankFull", tankFull);
+                  pref.end();
+                  request->send(200, "text/plain", "Tank Calibration Saved");
+                  return;
+                }
 
-                tankFull = data["tankFull"] | 0;
-                pref.putInt("tankFull", tankFull);
+                if (section == "currentLimits")
+                {
+                  ampLow = payload["ampLow"] | 0.0;
+                  ampMax = payload["ampMax"] | 0.0;
+                  pref.putFloat("ampLow", ampLow);
+                  pref.putFloat("ampMax", ampMax);
+                  pref.end();
+                  request->send(200, "text/plain", "Current Limits Saved");
+                  return;
+                }
 
-                ampLow = data["ampLow"] | 0.0;
-                pref.putFloat("ampLow", ampLow);
+                if (section == "features")
+                {
+                  useUltrasonic = payload["useUltrasonic"] | false;
+                  useSensors = payload["useSensors"] | false;
+                  useFloat = payload["useFloat"] | false;
+                  useWifi = payload["useWifi"] | true;
+                  autoRun = payload["autoRun"] | false;
+                  pref.putBool("useUltrasonic", useUltrasonic);
+                  pref.putBool("useSensors", useSensors);
+                  pref.putBool("useFloat", useFloat);
+                  pref.putBool("useWifi", useWifi);
+                  pref.putBool("autoRun", autoRun);
+                  pref.end();
+                  request->send(200, "text/plain", "Features Saved");
+                  return;
+                }
 
-                ampMax = data["ampMax"] | 0.0;
-                pref.putFloat("ampMax", ampMax);
+                if (section == "autoRunSchedule")
+                {
+                  autoRunTimes[0][0] = payload["onTime1"] | 615;
+                  autoRunTimes[0][1] = payload["offTime1"] | 730;
+                  autoRunTimes[1][0] = payload["onTime2"] | 1229;
+                  autoRunTimes[1][1] = payload["offTime2"] | 1330;
+                  autoRunTimes[2][0] = payload["onTime3"] | 1615;
+                  autoRunTimes[2][1] = payload["offTime3"] | 1715;
+                  autoRunEnabled[0] = payload["autoRunEnabled1"] | true;
+                  autoRunEnabled[1] = payload["autoRunEnabled2"] | true;
+                  autoRunEnabled[2] = payload["autoRunEnabled3"] | true;
+                  pref.putInt("onTime1", autoRunTimes[0][0]);
+                  pref.putInt("offTime1", autoRunTimes[0][1]);
+                  pref.putInt("onTime2", autoRunTimes[1][0]);
+                  pref.putInt("offTime2", autoRunTimes[1][1]);
+                  pref.putInt("onTime3", autoRunTimes[2][0]);
+                  pref.putInt("offTime3", autoRunTimes[2][1]);
+                  pref.putBool("autoRunEnabled1", autoRunEnabled[0]);
+                  pref.putBool("autoRunEnabled2", autoRunEnabled[1]);
+                  pref.putBool("autoRunEnabled3", autoRunEnabled[2]);
+                  pref.end();
+                  request->send(200, "text/plain", "Auto Run Schedule Saved");
+                  return;
+                }
 
-                useUltrasonic = data["useUltrasonic"] | false;
-                pref.putBool("useUltrasonic", useUltrasonic);
+                if (section == "cloudLogging")
+                {
+                  apiKey = payload["apiKey"] | "";
+                  pref.putString("apiKey", apiKey);
+                  pref.end();
+                  request->send(200, "text/plain", "Cloud Logging Saved");
+                  return;
+                }
 
-                useSensors = data["useSensors"] | false;
-                pref.putBool("useSensors", useSensors);
-
-                useFloat = data["useFloat"] | false;
-                pref.putBool("useFloat", useFloat);
-
-                useWifi = data["useWifi"] | true;
-                pref.putBool("useWifi", useWifi);
-
-                autoRun = data["autoRun"] | false;
-                pref.putBool("autoRun", autoRun);
-
-                apiKey = String((const char *)data["apiKey"]);
-                pref.putString("apiKey", apiKey);
-
-                ssid = String((const char *)data["ssid"]);
-                pref.putString("ssid", ssid);
-
-                password = String((const char *)data["password"]);
-                pref.putString("password", password);
-
-                autoRunTimes[0][0] = data["onTime1"] | 615;
-                pref.putInt("onTime1", autoRunTimes[0][0]);
-
-                autoRunTimes[0][1] = data["offTime1"] | 730;
-                pref.putInt("offTime1", autoRunTimes[0][1]);
-
-                autoRunTimes[1][0] = data["onTime2"] | 1229;
-                pref.putInt("onTime2", autoRunTimes[1][0]);
-
-                autoRunTimes[1][1] = data["offTime2"] | 1330;
-                pref.putInt("offTime2", autoRunTimes[1][1]);
-
-                autoRunTimes[2][0] = data["onTime3"] | 1615;
-                pref.putInt("onTime3", autoRunTimes[2][0]);
-
-                autoRunTimes[2][1] = data["offTime3"] | 1715;
-                pref.putInt("offTime3", autoRunTimes[2][1]);
+                if (section == "wifi")
+                {
+                  ssid = payload["ssid"] | "";
+                  password = payload["password"] | "";
+                  pref.putString("ssid", ssid);
+                  pref.putString("password", password);
+                  pref.end();
+                  request->send(200, "text/plain", "WiFi Settings Saved");
+                  return;
+                }
 
                 pref.end();
-
-                request->send(200, "text/plain", "Settings Saved");
+                request->send(400, "text/plain", "Unknown section");
               });
-      server.addHandler(handler);
+      server.addHandler(settingsSectionHandler);
 
       server.on("/api/ping", HTTP_GET, [](AsyncWebServerRequest *request)
                 {
@@ -699,6 +675,80 @@ void setup(void)
     Serial.println(json);
 
     request->send(200, "application/json", json); });
+
+      AsyncCallbackJsonWebHandler *pumpControlHandler =
+          new AsyncCallbackJsonWebHandler(
+              "/api/pump/control",
+              [](AsyncWebServerRequest *request, JsonVariant &json)
+              {
+                JsonObject data = json.as<JsonObject>();
+                String action = data["action"] | "";
+                action.trim();
+
+                if (action == "start")
+                {
+                  if (isPumpRunning)
+                  {
+                    request->send(200, "text/plain", "Pump already running");
+                    return;
+                  }
+
+                  pushFirmwareAlert("Pump start requested from browser. 10-second countdown started.");
+                  raiseAlert = ALERT_AUTOSTART;
+                  request->send(200, "text/plain", "Pump start queued");
+                  return;
+                }
+
+                if (action == "stop")
+                {
+                  if (!isPumpRunning)
+                  {
+                    request->send(200, "text/plain", "Pump already stopped");
+                    return;
+                  }
+
+                  pumpStop();
+                  pushFirmwareAlert("Pump stopped by browser command.");
+                  request->send(200, "text/plain", "Pump stopped");
+                  return;
+                }
+
+                request->send(400, "text/plain", "Invalid action");
+              });
+      server.addHandler(pumpControlHandler);
+
+      server.on("/api/error-buffer", HTTP_GET, [](AsyncWebServerRequest *request)
+                {
+                  DynamicJsonDocument doc(512);
+                  JsonArray messages = doc.createNestedArray("messages");
+
+                  String pending = firmwareErrorBuffer;
+                  firmwareErrorBuffer = "";
+
+                  if (pending.length() > 0)
+                  {
+                    String temp = pending;
+                    while (temp.length() > 0)
+                    {
+                      int idx = temp.indexOf('\n');
+                      if (idx < 0)
+                      {
+                        if (temp.length() > 0)
+                          messages.add(temp);
+                        break;
+                      }
+
+                      String line = temp.substring(0, idx);
+                      if (line.length() > 0)
+                        messages.add(line);
+
+                      temp = temp.substring(idx + 1);
+                    }
+                  }
+
+                  String json;
+                  serializeJson(doc, json);
+                  request->send(200, "application/json", json); });
 
       // Serve Settings HTML
       server.on("/settings", HTTP_GET,
@@ -775,9 +825,13 @@ void setup(void)
       server.on("/api/version", HTTP_GET,
                 [](AsyncWebServerRequest *request)
                 {
-                  DynamicJsonDocument doc(128);
+                  DynamicJsonDocument doc(256);
                   doc["version"] = FW_VERSION;
                   doc["fw_version"] = FW_VERSION;
+                  doc["software_version"] = SW_VERSION;
+                  doc["app_version"] = SW_VERSION;
+                  doc["swVersion"] = SW_VERSION;
+                  doc["swversion"] = SW_VERSION;
 
                   String json;
                   serializeJson(doc, json);
@@ -828,6 +882,101 @@ void setup(void)
       1,           // priority of the task
       &loop2Code,  // Task handle to keep track of created task
       0);          // pin task to core 0
+}
+
+void initializeHardware()
+{
+  Serial.begin(115200);
+  pinMode(PUMP_PIN, OUTPUT);
+  TURN_OFF_RELAY;
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, HIGH);
+  delay(500);
+  digitalWrite(BUZZER_PIN, LOW);
+
+  pixels.begin();
+  pixels.setBrightness(100);
+  pixels.setPixelColor(0, pixels.Color(255, 0, 0));
+  pixels.show();
+
+  if (!LittleFS.begin(true))
+    Serial.println("LittleFS Mount Failed");
+  else
+    Serial.println("LittleFS Mounted Successfully");
+
+  pinMode(BUTTON, INPUT);
+  display.begin(i2c_Address, true);
+  display.setContrast(0);
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SH110X_WHITE);
+  display.setFont(&FreeSerif9pt7b);
+  display.setCursor(5, 15);
+  display.println("INITIALIZING");
+  display.setCursor(37, 35);
+  display.println("PUMP");
+  display.setCursor(0, 55);
+  display.println(" CONTROLLER");
+  display.display();
+  delay(500);
+}
+
+void loadControllerSettings()
+{
+  if (!pref.isKey("tankLow"))
+    pref.putInt("tankLow", 0);
+  if (!pref.isKey("tankFull"))
+    pref.putInt("tankFull", 0);
+  if (!pref.isKey("ampLow"))
+    pref.putFloat("ampLow", 0.0);
+  if (!pref.isKey("ampMax"))
+    pref.putFloat("ampMax", 0.0);
+  if (!pref.isKey("useUltrasonic"))
+    pref.putBool("useUltrasonic", false);
+  if (!pref.isKey("useSensors"))
+    pref.putBool("useSensors", false);
+  if (!pref.isKey("useFloat"))
+    pref.putBool("useFloat", false);
+  if (!pref.isKey("useWifi"))
+    pref.putBool("useWifi", true);
+  if (!pref.isKey("apiKey"))
+    pref.putString("apiKey", "");
+  if (!pref.isKey("doneToday"))
+    pref.putUChar("doneToday", 0);
+  if (!pref.isKey("lastDay"))
+    pref.putInt("lastDay", 0);
+  if (!pref.isKey("autoRun"))
+    pref.putBool("autoRun", false);
+
+  for (byte i = 0; i < 3; i++)
+  {
+    if (!pref.isKey(autoRunTimeKeys[i][0]))
+      pref.putInt(autoRunTimeKeys[i][0], autoRunTimes[i][0]);
+    if (!pref.isKey(autoRunTimeKeys[i][1]))
+      pref.putInt(autoRunTimeKeys[i][1], autoRunTimes[i][1]);
+    if (!pref.isKey(autoRunEnabledKeys[i]))
+      pref.putBool(autoRunEnabledKeys[i], true);
+  }
+
+  tankLow = pref.getInt("tankLow", 0);
+  tankFull = pref.getInt("tankFull", 0);
+  ampLow = pref.getFloat("ampLow", 0);
+  ampMax = pref.getFloat("ampMax", 0);
+  useUltrasonic = pref.getBool("useUltrasonic", false);
+  useSensors = pref.getBool("useSensors", false);
+  useFloat = pref.getBool("useFloat", false);
+  useWifi = pref.getBool("useWifi", true);
+  apiKey = pref.getString("apiKey", "");
+  doneForToday = pref.getUChar("doneToday", 0);
+  lastDay = pref.getInt("lastDay", 0);
+  autoRun = pref.getBool("autoRun", false);
+
+  for (byte i = 0; i < 3; i++)
+  {
+    autoRunTimes[i][0] = pref.getInt(autoRunTimeKeys[i][0], autoRunTimes[i][0]);
+    autoRunTimes[i][1] = pref.getInt(autoRunTimeKeys[i][1], autoRunTimes[i][1]);
+    autoRunEnabled[i] = pref.getBool(autoRunEnabledKeys[i], true);
+  }
 }
 
 /**
@@ -905,7 +1054,7 @@ void loop2(void *pvParameters)
     }
 
     // =========================
-    // RTC update (1 second)
+    // Time update (1 second)
     // =========================
 
     if (currentMillis - lastRtcUpdate >= 1000)
@@ -958,6 +1107,7 @@ void loop2(void *pvParameters)
       {
         byte autoRunDoneFlag = 1 << i;
         if ((doneForToday & autoRunDoneFlag) == 0 &&
+            autoRunEnabled[i] &&
             checkTimeFor(autoRunTimes[i][0], autoRunTimes[i][1]))
         {
           activeAutoRunPeriod = i + 1;
@@ -1003,7 +1153,7 @@ void loop(void)
   {
     isDisplayOn = true;
     raiseAlert = STATUS_OK;
-    runPumpAuto();
+    autoPumpStartSequence();
     isDisplayOn = false;
   }
 
@@ -1011,7 +1161,7 @@ void loop(void)
       raiseAlert <= ALERT_UNDERCURRENT)
   {
     isDisplayOn = true;
-    handlePumpCompletion(raiseAlert);
+    showPumpStopReason(raiseAlert);
     raiseAlert = STATUS_OK;
     isDisplayOn = false;
   }
@@ -1086,11 +1236,7 @@ void loop(void)
   // long press to activate menu
   byte count = 0;
 
-  // Check auto-start cooldown before processing button presses
-  unsigned long currentTime = millis();
-  bool inAutoStartCooldown = (currentTime - autoStartCompleteTime) < AUTO_START_COOLDOWN;
-
-  if (digitalRead(BUTTON) == HIGH && !inAutoStartCooldown)
+  if (digitalRead(BUTTON) == HIGH)
   {
     lastButtonPressTime = millis(); // Update last button press time on each press to keep display on
     if (!isDisplayOn)
@@ -1161,9 +1307,12 @@ void displayPower(bool on)
  */
 void pumpStart()
 {
+  if (isPumpRunning)
+    return;
+
   percBegin = tankLevelPerc();
-  isPumpRunning = true;
   TURN_ON_RELAY;
+  isPumpRunning = true;
   pumpStartTime = time(NULL); // Set current time as pump start time
   holdData = 0;               // Reset tank level display smoothing
   startTime = currTime;
@@ -1174,6 +1323,7 @@ void pumpStart()
     sumAmp = 0;   // Reset ampere sum
   }
 
+  pushFirmwareAlert("Pump started.");
   Serial.println("PUMP STARTED");
 }
 
@@ -1185,8 +1335,12 @@ void pumpStart()
  */
 void pumpStop()
 {
+  if (!isPumpRunning)
+    return;
+
   TURN_OFF_RELAY;
   isPumpRunning = false;
+  pushFirmwareAlert("Pump stopped.");
   Serial.println("PUMP STOPPED");
 }
 
@@ -1209,14 +1363,14 @@ void resetTimer()
  * This function handles the pump start/stop sequence, including user confirmation
  * and safety checks before operation.
  */
-void pumpRunSequence(bool flag)
+void pumpRunSequence()
 {
   delay(100);
   byte count = 0, option = 1;
+  bool stopMode = isPumpRunning;
+
   while (true)
   {
-    bool stopMode = isPumpRunning;
-
     display.clearDisplay();
     display.setTextColor(SH110X_WHITE);
     display.setTextSize(1);
@@ -1245,67 +1399,63 @@ void pumpRunSequence(bool flag)
       display.print("NO");
     }
 
-    if ((!stopMode && flag) || digitalRead(BUTTON) == 1)
+    if (digitalRead(BUTTON) != HIGH)
     {
-      while (digitalRead(BUTTON) == 1)
+      count = 0;
+      display.display();
+      continue;
+    }
+
+    while (digitalRead(BUTTON) == HIGH)
+    {
+      count++;
+      if (count <= 8)
       {
-
-        count++;
-        if (count >= 1 && count <= 8)
-        {
-          blinkOrange(1, 20);
-        }
-        else
-        {
-          blinkOrange(0, 150);
-          delay(100);
-        }
-        delay(50);
-      }
-
-      if (flag && !stopMode)
-      {
-        count = 50;
-        option = 2;
-      }
-
-      // pixels.setBrightness(20);
-      pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-      pixels.show();
-
-      if (count >= 1 && count <= 8)
-      {
-        option++;
-        if (option > 2)
-          option = 1;
+        blinkOrange(1, 20);
       }
       else
       {
-        if (option == 1)
-          break; // NO
+        blinkOrange(0, 150);
+        delay(100);
+      }
+      delay(50);
+    }
 
+    pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+    pixels.show();
+
+    if (count <= 8)
+    {
+      option = (option == 1) ? 2 : 1;
+    }
+    else
+    {
+      if (option == 1)
+      {
         if (stopMode)
         {
           pumpStop();
-          handlePumpCompletion(1); // raise user interrupt error
-          break;
-        }
-
-        byte errorCode = monitorPumpSafety();
-        if (errorCode <= 1) // check if there is any error
-        {
-          pumpStart();
-          pixels.setPixelColor(0, pixels.Color(0, 255, 255));
-          pixels.show();
-          pumpOnDelay();
+          showPumpStopReason(1); // user interrupted the pump after it was already running
         }
         else
         {
-          handlePumpCompletion(errorCode); // raise error
+          byte errorCode = monitorPumpSafety();
+          if (errorCode <= STATUS_NEEDS_WATER)
+          {
+            pumpStart();
+            pixels.setPixelColor(0, pixels.Color(0, 255, 255));
+            pixels.show();
+            pumpOnDelay();
+            return;
+          }
+          showPumpStopReason(errorCode);
         }
-        break;
+        return;
       }
+
+      break; // user pressed NO
     }
+
     count = 0;
     display.display();
   }
@@ -1313,7 +1463,7 @@ void pumpRunSequence(bool flag)
 
 /**
  * @brief Monitors system parameters and returns error status
- *
+ *isPumpRunning
  * @return byte Error code (0: No error, 1: Tank not full, 2: Tank full, 3: High ampere, 4: Low ampere)
  *
  * This function checks various sensor readings and system states to ensure safe operation.
@@ -1321,15 +1471,21 @@ void pumpRunSequence(bool flag)
 byte monitorPumpSafety()
 {
   if (useFloat && floatSensor)
+  {
+    pushFirmwareAlert("Tank full detected.");
     return ALERT_TANK_FULL;
+  }
 
   if (useSensors && isPumpRunning)
   {
-    if (liveAmp > ampMax)
-      return ALERT_OVERCURRENT;
+    if (ampMax > 0.0 && ampLow >= 0.0 && ampMax > ampLow)
+    {
+      if (liveAmp > ampMax)
+        return ALERT_OVERCURRENT;
 
-    if (liveAmp < ampLow)
-      return ALERT_UNDERCURRENT;
+      if (liveAmp < ampLow)
+        return ALERT_UNDERCURRENT;
+    }
   }
 
   if (useFloat && !floatSensor)
@@ -1343,17 +1499,20 @@ byte monitorPumpSafety()
  * @param elapsedSeconds Total elapsed seconds since pump started
  * @return Formatted string in HH:MM:SS format
  */
-String formatElapsedTime(time_t elapsedSeconds)
+void formatElapsedTime(time_t elapsedSeconds, char *buffer, size_t bufferSize)
 {
   int hours = elapsedSeconds / 3600;
   int minutes = (elapsedSeconds % 3600) / 60;
   int seconds = elapsedSeconds % 60;
 
-  String h = hours < 10 ? "0" + String(hours) : String(hours);
-  String m = minutes < 10 ? "0" + String(minutes) : String(minutes);
-  String s = seconds < 10 ? "0" + String(seconds) : String(seconds);
+  snprintf(buffer, bufferSize, "%02d:%02d:%02d", hours, minutes, seconds);
+}
 
-  return h + ":" + m + ":" + s;
+String formatElapsedTime(time_t elapsedSeconds)
+{
+  char buffer[9];
+  formatElapsedTime(elapsedSeconds, buffer, sizeof(buffer));
+  return String(buffer);
 }
 
 /**
@@ -1387,12 +1546,12 @@ void pumpOnDelay()
 }
 
 /**
- * @brief Automatically starts the pump after a countdown, allowing user to cancel
+ * @brief Separate auto-start flow for scheduled pump runs.
  *
- * This function initiates a 10-second countdown before automatically starting the pump.
- * During the countdown, the user can press the button to cancel the auto-start.
+ * This is intentionally independent from the button-based manual start/stop flow.
+ * Auto mode must not reuse the user confirmation sequence.
  */
-void runPumpAuto()
+void autoPumpStartSequence()
 {
   for (byte secondsLeft = 10; secondsLeft > 0 && !isPumpRunning; secondsLeft--)
   {
@@ -1444,18 +1603,24 @@ void runPumpAuto()
     pixels.show();
   }
 
-  // Clean button state - ensure button is fully released before returning
   while (digitalRead(BUTTON) == 1)
   {
     delay(10);
     yield();
   }
-  delay(100); // Small debounce delay
+  delay(100);
 
-  // Set cooldown flag to ignore button presses for 2 seconds after auto-start
-  autoStartCompleteTime = millis();
+  byte errorCode = monitorPumpSafety();
+  if (errorCode <= STATUS_NEEDS_WATER)
+  {
+    pumpStart();
+    pixels.setPixelColor(0, pixels.Color(0, 255, 255));
+    pixels.show();
+    pumpOnDelay();
+    return;
+  }
 
-  pumpRunSequence(true);
+  showPumpStopReason(errorCode);
 }
 
 constexpr uint16_t CURRENT_SAMPLES = 1480;
@@ -1534,6 +1699,8 @@ int readUltrasonic()
 bool readFloat()
 {
   static bool floatState = false;
+  static const int FLOAT_HIGH = 900;
+  static const int FLOAT_LOW = 980;
 
   uint32_t currentMillis = millis();
 
@@ -1541,9 +1708,13 @@ bool readFloat()
   {
     previousMillis2 = currentMillis;
 
-    // true = tank full
-    // false = tank not full
-    floatState = (analogRead(FLOAT_SENSOR) <= 900);
+    int value = analogRead(FLOAT_SENSOR);
+
+    // Simple hysteresis so the float sensor does not chatter near the threshold.
+    if (value <= FLOAT_HIGH)
+      floatState = true;
+    else if (value >= FLOAT_LOW)
+      floatState = false;
   }
 
   return floatState;
@@ -1914,31 +2085,36 @@ void powerWifi()
  */
 bool autoTimeUpdate()
 {
-  if (WiFi.status() == WL_CONNECTED)
+  if (WiFi.status() != WL_CONNECTED)
   {
-    timeClient.begin();
-    if (timeClient.update())
+    pushFirmwareAlert("RTC sync failed: WiFi not connected.");
+    Serial.println("RTC synchronization failed: WiFi not connected");
+    return false;
+  }
+
+  timeClient.begin();
+  for (byte attempt = 0; attempt < 5; attempt++)
+  {
+    if (timeClient.forceUpdate())
     {
       time_t rawtime = timeClient.getEpochTime();
-      struct tm *ti;
-      ti = localtime(&rawtime);
+      struct tm *ti = localtime(&rawtime);
 
       uint16_t year = ti->tm_year + 1900;
-      uint8_t x = year % 10;
-      year = year / 10;
-      uint8_t y = year % 10;
-      year = y * 10 + x;
 
       uint8_t month = ti->tm_mon + 1;
-
       uint8_t day = ti->tm_mday;
       rtc.adjust(DateTime(year, month, day, timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds()));
 
       Serial.println("RTC synchronized successfully");
       return true;
     }
+
+    delay(500);
+    yield();
   }
 
+  pushFirmwareAlert("RTC sync failed after retries.");
   Serial.println("RTC synchronization failed");
   return false;
 }
@@ -2043,9 +2219,12 @@ Handles the completion of the pump operation, displaying appropriate messages ba
 * high ampere: err = 3
 * low ampere: err = 4
 */
-void handlePumpCompletion(byte code)
+/**
+ * Shows the reason the pump stopped after the relay has already been turned off.
+ * This is a display/reporting function only; it does not start or stop the pump.
+ */
+void showPumpStopReason(byte code)
 {
-
   display.clearDisplay();
   display.setTextColor(SH110X_WHITE);
   display.setTextSize(1);
@@ -2059,6 +2238,8 @@ void handlePumpCompletion(byte code)
   time_t totalRuntime = pumpStartTime == 0 ? 0 : time(NULL) - pumpStartTime;
   display.print(formatElapsedTime(totalRuntime));
   display.display();
+  pushFirmwareAlert("Pump stop reason: " + errorCodeMessage[code - 1]);
+
   if (code == ALERT_TANK_FULL && activeAutoRunPeriod >= 1 && activeAutoRunPeriod <= 3)
   {
     doneForToday |= (1 << (activeAutoRunPeriod - 1));
@@ -2107,7 +2288,7 @@ void handlePumpCompletion(byte code)
     uint32_t elapsedTime = millis() - messageStartTime;
     uint32_t remainingSeconds = (messageTimeout - elapsedTime) / 1000;
 
-    // Check if 60 seconds have elapsed - auto exit only for ALERT_TANK_FULL
+    // Check if 180 seconds have elapsed - auto exit only for ALERT_TANK_FULL
     if (code == ALERT_TANK_FULL && elapsedTime >= messageTimeout)
     {
       digitalWrite(BUZZER_PIN, LOW);
@@ -2220,26 +2401,35 @@ void pumpLog(String errM)
   {
     WiFiClient client;
     HTTPClient http;
-    // Calculate elapsed time since pump started
     time_t elapsedTime = time(NULL) - pumpStartTime;
-    String temp = formatElapsedTime(elapsedTime);
+    char elapsedBuf[9];
+    formatElapsedTime(elapsedTime, elapsedBuf, sizeof(elapsedBuf));
 
-    // Your Domain name with URL path or IP address with path
+    char msg[220];
+    snprintf(msg, sizeof(msg), "%s#%s#%s#%d#%d#%s#%.2f#%s",
+             dateAndTime.c_str(),
+             startTime.c_str(),
+             endTime.c_str(),
+             percBegin,
+             percEnd,
+             elapsedBuf,
+             sumAmp,
+             errM.c_str());
+
     http.begin(client, serverName);
-    String msg = dateAndTime + "#" + startTime + "#" + endTime + "#" + String(percBegin) + "#" + String(percEnd) + "#" + temp + "#" + sumAmp + "#" + errM;
-
-    // If you need an HTTP request with a content type: application/json, use the following:
-    // Specify content-type header
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-    String httpRequestData = "api_key=" + apiKey + "&data=" + msg;
+
+    char httpRequestData[300];
+    snprintf(httpRequestData, sizeof(httpRequestData), "api_key=%s&data=%s",
+             apiKey.c_str(), msg);
+
     int httpResponseCode = http.POST(httpRequestData);
 
     Serial.print("HTTP Response code: ");
     Serial.println(httpResponseCode);
-    String response = http.getString(); // Get the response to the request
+    String response = http.getString();
     Serial.println(response);
 
-    // Free resources
     http.end();
   }
   else
@@ -2281,24 +2471,16 @@ void pumpLog(String errM)
  */
 bool checkTimeFor(int onTime, int offTime)
 {
-  int h = timeHour;
-  int m = timeMinute;
+  int currentMinutes = (int)timeHour * 60 + (int)timeMinute;
+  int startMinutes = (onTime / 100) * 60 + (onTime % 100);
+  int endMinutes = (offTime / 100) * 60 + (offTime % 100);
 
-  int timeString = h * 100 + m; // if h=12 and m=23 then 12*100 + 23 = 1223 hours
+  if (startMinutes == endMinutes)
+    return false;
 
-  if (offTime > onTime) // when off timing is greater than on timing
-  {
-    if ((timeString > onTime) && (timeString < offTime))
-    {
-      return true;
-    }
-  }
-  else
-  {
-    if (((timeString > onTime) && (timeString > offTime)) || ((timeString < onTime) && (timeString < offTime)))
-    {
-      return true;
-    }
-  }
-  return false;
+  if (startMinutes < endMinutes)
+    return (currentMinutes > startMinutes && currentMinutes < endMinutes);
+
+  // overnight window
+  return (currentMinutes > startMinutes || currentMinutes < endMinutes);
 }

@@ -25,7 +25,6 @@
       margin: 0 auto;
     }
 
-    h1,
     h2 {
       color: white;
       text-align: center;
@@ -73,8 +72,11 @@
 
     input[type="text"],
     input[type="password"],
-    input[type="number"] {
+    input[type="number"],
+    input[type="datetime-local"],
+    input[type="time"] {
       width: 100%;
+      min-width: 0;
       padding: 12px 15px;
       margin-top: 8px;
       border: 2px solid #e0e0e0;
@@ -121,7 +123,8 @@
 
     input[type="text"]:focus,
     input[type="password"]:focus,
-    input[type="number"]:focus {
+    input[type="number"]:focus,
+    input[type="time"]:focus {
       outline: none;
       border-color: #667eea;
       background: white;
@@ -158,16 +161,143 @@
       gap: 15px;
     }
 
-    .button-row {
+    .schedule-list {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .schedule-pair {
+      padding: 15px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      background: #f8f9fa;
+    }
+
+    .schedule-pair h4 {
+      margin-bottom: 12px;
+      color: #333;
+    }
+
+    .schedule-pair .row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .schedule-pair input[type="time"]:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .button-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
       gap: 15px;
       margin-top: 20px;
     }
 
+    .bottom-actions {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin: 10px 0 4px;
+    }
+
+    .bottom-actions>button,
+    .bottom-actions>a {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    .bottom-actions>button,
+    .bottom-actions>a>button {
+      width: 100%;
+      margin-top: 0;
+    }
+
+    .bottom-status {
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .operation-status,
+    #versionCheckResult {
+      width: 100%;
+      min-height: 1.2em;
+      color: rgba(255, 255, 255, 0.9);
+      text-align: center;
+      font-size: 0.9em;
+    }
+
+    .operation-status.busy::after {
+      content: ' ...';
+      display: inline-block;
+      width: 24px;
+      text-align: left;
+      animation: operation-dots 1.2s steps(4, end) infinite;
+    }
+
+    @keyframes operation-dots {
+      0% {
+        content: ' .';
+      }
+
+      33% {
+        content: ' ..';
+      }
+
+      66% {
+        content: ' ...';
+      }
+
+      100% {
+        content: '    ';
+      }
+    }
+
+    .live-controls {
+      margin-top: 18px;
+    }
+
+    .status-value {
+      font-weight: bold;
+    }
+
+    .status-error {
+      color: #dc2626;
+    }
+
+    .status-ok {
+      color: #16a34a;
+    }
+
+    .tank-progress {
+      width: 100%;
+      height: 25px;
+    }
+
+    .restart-button {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    }
+
+    .ota-button {
+      background: linear-gradient(135deg, #00b894 0%, #00a883 100%);
+    }
+
+    #pumpToggleButton {
+      width: min(280px, 100%);
+      background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+      box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    }
+
+    #pumpToggleButton.stop {
+      background: linear-gradient(135deg, #ff6b6b 0%, #d32f2f 100%);
+      box-shadow: 0 4px 15px rgba(255, 107, 107, 0.35);
+    }
+
     .button-row button,
     .button-row a button {
-      width: 100%;
+      width: min(280px, 100%);
       margin-top: 0;
     }
 
@@ -231,34 +361,111 @@
     }
 
     footer {
+      margin-top: 10px;
+      padding: 22px 18px 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -8px 24px rgba(17, 24, 39, 0.15);
+      color: rgba(255, 255, 255, 0.92);
       text-align: center;
-      margin-top: 50px;
-      padding: 20px 20px 0px 20px;
-      color: rgba(255, 255, 255, 0.9);
-      font-size: 0.9em;
-      border-top: 1px solid rgba(255, 255, 255, 0.2);
     }
 
-    footer a {
-      color: #fff;
+    footer a,
+    footer a:visited,
+    footer a:hover,
+    footer a:active {
+      color: inherit;
       text-decoration: none;
-      font-weight: 500;
-      transition: opacity 0.3s ease;
     }
 
-    footer a:hover {
-      opacity: 0.7;
-      text-decoration: underline;
+    .version-area {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
     }
 
-    footer .version-info {
-      margin-bottom: 10px;
+    .version-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 8px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 999px;
+      background: rgba(12, 20, 37, 0.22);
+      color: #f8fafc;
       font-family: 'Courier New', monospace;
+      font-size: 0.82em;
+      letter-spacing: 0.04em;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .version-badge:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255, 255, 255, 0.35);
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.2);
+    }
+
+    .footer-meta {
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.85em;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .footer-meta .copyright {
+      opacity: 0.9;
+      min-width: 0;
+    }
+
+    .footer-meta .sacred {
+      font-size: 1.05em;
+      font-style: italic;
+      color: #fde68a;
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 12px rgba(253, 230, 138, 0.35);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .version-check-button {
+      min-width: 0;
+      padding: 10px 16px;
+      font-size: 0.9em;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #0f766e 0%, #0e7490 100%);
+      box-shadow: 0 4px 15px rgba(14, 116, 144, 0.35);
+    }
+
+    #versionCheckResult {
+      margin-top: 10px;
+      min-height: 20px;
+      font-size: 0.8em;
+      color: #e2e8f0;
+    }
+
+    #versionCheckResult.update-available {
+      color: #fef3c7;
+    }
+
+    #versionCheckResult.up-to-date {
+      color: #bbf7d0;
+    }
+
+    #versionCheckResult.newer-installed {
+      color: #bfdbfe;
     }
 
     @media (max-width: 600px) {
 
-      h1,
       h2 {
         font-size: 1.8em;
       }
@@ -270,6 +477,23 @@
       .card {
         padding: 15px;
       }
+
+      .footer-meta {
+        font-size: 0.75em;
+        gap: 6px;
+      }
+
+      .bottom-actions {
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 2px;
+      }
+
+      .bottom-actions>button,
+      .bottom-actions>a {
+        width: 100%;
+        flex-basis: auto;
+      }
     }
   </style>
 </head>
@@ -280,10 +504,10 @@
     <div class="card">
       <h3>Live Status</h3>
 
-      <table style="width:100%">
+      <table>
         <tr>
           <td>Connectivity</td>
-          <td id="connectivityStatus" style="font-weight: bold; color: red;">Error</td>
+          <td id="connectivityStatus" class="status-value status-error">Error</td>
         </tr>
         <tr>
           <td>Pump</td>
@@ -319,127 +543,223 @@
         </tr>
         <tr>
           <td colspan="2">
-            <progress id="tankBar" value="0" max="100" style="width:100%;height:25px;">
+            <progress id="tankBar" class="tank-progress" value="0" max="100">
             </progress>
           </td>
         </tr>
       </table>
 
+      <div class="button-row live-controls">
+        <button id="pumpToggleButton" type="button" onclick="togglePumpFromWeb()" disabled>Checking pump
+          status...</button>
+      </div>
+
     </div>
 
 
-    <form id="settingsForm">
-      <div class="card">
-        <h3>Tank Calibration</h3>
-        <label>Tank Empty Distance (tankLow)</label>
-        <input type="number" id="tankLow">
+    <div class="card">
+      <h3>Tank Calibration</h3>
+      <label>Tank Empty Distance (tankLow)</label>
+      <input type="number" id="tankLow">
 
-        <label>Tank Full Distance (tankFull)</label>
-        <input type="number" id="tankFull">
-      </div>
+      <label>Tank Full Distance (tankFull)</label>
+      <input type="number" id="tankFull">
 
-      <div class="card">
-        <h3>Current Limits</h3>
-        <label>Minimum Current (ampLow)</label>
-        <input type="number" step="0.01" id="ampLow">
+      <button type="button" onclick="saveTankCalibration()">Save Tank Calibration</button>
+    </div>
 
-        <label>Maximum Current (ampMax)</label>
-        <input type="number" step="0.01" id="ampMax">
-      </div>
+    <div class="card">
+      <h3>Current Limits</h3>
+      <label>Minimum Current (ampLow)</label>
+      <input type="number" step="0.01" id="ampLow">
 
-      <div class="card">
-        <h3>Features</h3>
-        <label><input type="checkbox" id="useUltrasonic"> Use Ultrasonic Sensor</label>
-        <label><input type="checkbox" id="useSensors"> Use Current Sensor</label>
-        <label><input type="checkbox" id="useFloat"> Use Float Sensor</label>
-        <label><input type="checkbox" id="useWifi"> Use WiFi</label>
-        <label><input type="checkbox" id="autoRun"> Enable Auto Run</label>
-      </div>
+      <label>Maximum Current (ampMax)</label>
+      <input type="number" step="0.01" id="ampMax">
 
-      <div class="card">
-        <h3>Auto Run Schedule (HHMM)</h3>
-        <div class="row">
-          <input type="number" id="onTime1" placeholder="ON 1">
-          <input type="number" id="offTime1" placeholder="OFF 1">
-          <input type="number" id="onTime2" placeholder="ON 2">
-          <input type="number" id="offTime2" placeholder="OFF 2">
-          <input type="number" id="onTime3" placeholder="ON 3">
-          <input type="number" id="offTime3" placeholder="OFF 3">
+      <button type="button" onclick="saveCurrentLimits()">Save Current Limits</button>
+    </div>
+
+    <div class="card">
+      <h3>Features</h3>
+      <label><input type="checkbox" id="useUltrasonic"> Use Ultrasonic Sensor</label>
+      <label><input type="checkbox" id="useSensors"> Use Current Sensor</label>
+      <label><input type="checkbox" id="useFloat"> Use Float Sensor</label>
+      <label><input type="checkbox" id="useWifi"> Use WiFi</label>
+      <label><input type="checkbox" id="autoRun"> Enable Auto Run</label>
+
+      <button type="button" onclick="saveFeatures()">Save Features</button>
+    </div>
+
+    <div class="card">
+      <h3>Auto Run Schedule</h3>
+      <div class="schedule-list">
+        <div class="schedule-pair">
+          <h4>Timer 1</h4>
+          <label><input type="checkbox" id="autoRunEnabled1"> Enable timer 1</label>
+          <div class="row">
+            <label>Start pump at <input type="time" id="onTime1" aria-label="Timer 1 start time"></label>
+            <label>Stop pump at <input type="time" id="offTime1" aria-label="Timer 1 stop time"></label>
+          </div>
+        </div>
+        <div class="schedule-pair">
+          <h4>Timer 2</h4>
+          <label><input type="checkbox" id="autoRunEnabled2"> Enable timer 2</label>
+          <div class="row">
+            <label>Start pump at <input type="time" id="onTime2" aria-label="Timer 2 start time"></label>
+            <label>Stop pump at <input type="time" id="offTime2" aria-label="Timer 2 stop time"></label>
+          </div>
+        </div>
+        <div class="schedule-pair">
+          <h4>Timer 3</h4>
+          <label><input type="checkbox" id="autoRunEnabled3"> Enable timer 3</label>
+          <div class="row">
+            <label>Start pump at <input type="time" id="onTime3" aria-label="Timer 3 start time"></label>
+            <label>Stop pump at <input type="time" id="offTime3" aria-label="Timer 3 stop time"></label>
+          </div>
         </div>
       </div>
 
-      <div class="card">
-        <h3>Cloud Logging</h3>
-        <label>API Key</label>
-        <input type="text" id="apiKey">
+      <button type="button" onclick="saveAutoRunSchedule()">Save Auto Run Schedule</button>
+    </div>
+
+    <div class="card">
+      <h3>Cloud Logging</h3>
+      <label>API Key</label>
+      <input type="text" id="apiKey">
+
+      <button type="button" onclick="saveCloudLogging()">Save Cloud Logging</button>
+    </div>
+
+    <div class="card">
+      <h3>WiFi</h3>
+      <label>SSID</label>
+      <input type="text" id="ssid">
+
+      <label>Password</label>
+      <div class="password-container">
+        <input type="password" id="password">
+        <button type="button" class="password-toggle" onclick="togglePasswordVisibility()"
+          title="Show/Hide Password">👁️</button>
       </div>
 
-      <div class="card">
-        <h3>WiFi</h3>
-        <label>SSID</label>
-        <input type="text" id="ssid">
+      <button type="button" onclick="saveWifiSettings()">Save WiFi Settings</button>
+    </div>
 
-        <label>Password</label>
-        <div class="password-container">
-          <input type="password" id="password">
-          <button type="button" class="password-toggle" onclick="togglePasswordVisibility()"
-            title="Show/Hide Password">👁️</button>
-        </div>
-      </div>
+    <div class="card">
+      <h3>RTC Settings</h3>
 
-      <div class="card">
-        <h3>RTC Settings</h3>
+      <button type="button" onclick="syncRtcFromWiFi()">
+        Sync RTC from WIFI
+      </button>
 
-        <button type="button" onclick="syncRtcFromWiFi()">
-          Sync RTC from WIFI
+      <button type="button" onclick="syncRtcFromBrowserTime()">
+        Sync RTC From Browser Time
+      </button>
+
+      <br><br>
+
+      <label>Manual Date & Time</label>
+      <input type="datetime-local" id="manualRtc">
+
+      <button type="button" onclick="setManualRtc()">
+        Set RTC Manually
+      </button>
+    </div>
+
+    <div class="bottom-actions">
+      <button type="button" class="restart-button" onclick="restartDevice()">
+        Restart ESP32
+      </button>
+      <a href="/update">
+        <button type="button" class="ota-button">
+          OTA Update
         </button>
+      </a>
+      <button id="backupSettings" type="button">Backup Settings</button>
+      <button id="restoreSettings" type="button">Restore Settings</button>
+      <input id="restoreFile" type="file" accept="application/json,.json" hidden>
+      <button id="checkVersion" class="version-check-button" type="button">Check for Updates</button>
+    </div>
+    <div class="bottom-status">
+      <div id="operationStatus" class="operation-status" role="status" aria-live="polite"></div>
+      <div id="versionCheckResult" role="status" aria-live="polite"></div>
+    </div>
 
-        <button type="button" onclick="syncRtcFromBrowserTime()">
-          Sync RTC From Browser Time
-        </button>
-
-        <br><br>
-
-        <label>Manual Date & Time</label>
-        <input type="datetime-local" id="manualRtc">
-
-        <button type="button" onclick="setManualRtc()">
-          Set RTC Manually
-        </button>
-      </div>
-
-      <button type="button" onclick="saveSettings()">Save Settings</button>
-
-      <div class="button-row">
-        <button type="button" onclick="restartDevice()"
-          style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">
-          🔄 Restart ESP32
-        </button>
-        <a href="/update">
-          <button type="button" style="background: linear-gradient(135deg, #00b894 0%, #00a883 100%);">
-            ⬆️ OTA Update
-          </button>
+    <footer>
+      <div class="version-area">
+        <a id="fwVersionLink" class="version-badge"
+          href="https://github.com/desiFish/Water-Pump-Controller-V2/releases/latest" target="_blank" rel="noopener">
+          Firmware: <span id="fwVersion">Loading...</span>
+        </a>
+        <a id="swVersionLink" class="version-badge"
+          href="https://github.com/desiFish/Water-Pump-Controller-V2/releases/latest" target="_blank" rel="noopener">
+          Software: <span id="swVersion">Loading...</span>
         </a>
       </div>
-    </form>
-    <footer>
-      <div class="version-info">
-        Firmware Version: <span id="fwVersion">Loading...</span> | Software Version: <span
-          id="swVersion">Loading...</span>
-      </div>
-      <div>
-        © <a href="https://github.com/desiFish" target="_blank">desiFish</a> | Made with ❤️ in India
-      </div>
-      <div style="margin-top: 8px; font-size: 0.85em; font-style: italic;">
-        Om Namo Narayana
+      <div class="footer-meta">
+        <span class="copyright">© 2025 <a href="https://github.com/desiFish" target="_blank" rel="noopener">desiFish</a>
+          | Made with ❤️ in India</span>
+        <span class="sacred">| ॐ नमो नारायणाय</span>
       </div>
     </footer>
   </div>
 
   <script>
-    // Software Version
-    const SOFTWARE_VERSION = '1.0.0';
+    const RELEASES_URL = 'https://github.com/desiFish/Water-Pump-Controller-V2/releases/latest';
+    const SHIELDS_VERSION_URL = 'https://img.shields.io/github/v/release/desiFish/Water-Pump-Controller-V2';
+
+    // Software version is reported by the firmware; browser falls back to a local value if unavailable.
+    const DEFAULT_SOFTWARE_VERSION = '1.0.0';
+    let SOFTWARE_VERSION = DEFAULT_SOFTWARE_VERSION;
     let FIRMWARE_VERSION = 'Loading...';
+    let pumpRunningFromFirmware = null;
+    let pumpControlRequestInProgress = false;
+    const dom = {
+      connectivityStatus: document.getElementById('connectivityStatus'),
+      pumpRunningLive: document.getElementById('pumpRunningLive'),
+      tankPercentLive: document.getElementById('tankPercentLive'),
+      distanceLive: document.getElementById('distanceLive'),
+      ampLive: document.getElementById('ampLive'),
+      floatLive: document.getElementById('floatLive'),
+      wifiLive: document.getElementById('wifiLive'),
+      rssiLive: document.getElementById('rssiLive'),
+      timeLive: document.getElementById('timeLive'),
+      tankBar: document.getElementById('tankBar'),
+      pumpToggleButton: document.getElementById('pumpToggleButton'),
+      password: document.getElementById('password'),
+      passwordToggle: document.querySelector('.password-toggle'),
+      tankLow: document.getElementById('tankLow'),
+      tankFull: document.getElementById('tankFull'),
+      ampLow: document.getElementById('ampLow'),
+      ampMax: document.getElementById('ampMax'),
+      useUltrasonic: document.getElementById('useUltrasonic'),
+      useSensors: document.getElementById('useSensors'),
+      useFloat: document.getElementById('useFloat'),
+      useWifi: document.getElementById('useWifi'),
+      autoRun: document.getElementById('autoRun'),
+      autoRunEnabled1: document.getElementById('autoRunEnabled1'),
+      autoRunEnabled2: document.getElementById('autoRunEnabled2'),
+      autoRunEnabled3: document.getElementById('autoRunEnabled3'),
+      onTime1: document.getElementById('onTime1'),
+      offTime1: document.getElementById('offTime1'),
+      onTime2: document.getElementById('onTime2'),
+      offTime2: document.getElementById('offTime2'),
+      onTime3: document.getElementById('onTime3'),
+      offTime3: document.getElementById('offTime3'),
+      apiKey: document.getElementById('apiKey'),
+      ssid: document.getElementById('ssid'),
+      manualRtc: document.getElementById('manualRtc'),
+      checkVersion: document.getElementById('checkVersion'),
+      versionCheckResult: document.getElementById('versionCheckResult'),
+      fwVersionLink: document.getElementById('fwVersionLink'),
+      swVersionLink: document.getElementById('swVersionLink'),
+      fwVersion: document.getElementById('fwVersion'),
+      swVersion: document.getElementById('swVersion'),
+      backupSettings: document.getElementById('backupSettings'),
+      restoreSettings: document.getElementById('restoreSettings'),
+      restoreFile: document.getElementById('restoreFile'),
+      operationStatus: document.getElementById('operationStatus')
+    };
 
     async function loadSettings() {
       const r = await fetch('/api/settings');
@@ -449,64 +769,266 @@
         let el = document.getElementById(k);
         if (!el) return;
         if (el.type === "checkbox") el.checked = s[k];
+        else if (el.type === 'time') el.value = formatScheduleTime(s[k]);
         else el.value = s[k];
+      });
+      updateScheduleInputs();
+    }
+
+    function formatScheduleTime(value) {
+      const time = String(value ?? '').padStart(4, '0');
+      if (!/^\d{4}$/.test(time)) return '';
+      return time.slice(0, 2) + ':' + time.slice(2);
+    }
+
+    function parseScheduleTime(value) {
+      const digits = String(value || '').replace(':', '');
+      return digits ? Number(digits) : 0;
+    }
+
+    function updateScheduleInputs() {
+      [1, 2, 3].forEach(number => {
+        const enabled = dom['autoRunEnabled' + number].checked;
+        dom['onTime' + number].disabled = !enabled;
+        dom['offTime' + number].disabled = !enabled;
       });
     }
 
-    async function saveSettings() {
-      const data = {
-        tankLow: +tankLow.value,
-        tankFull: +tankFull.value,
-        ampLow: +ampLow.value,
-        ampMax: +ampMax.value,
-        useUltrasonic: useUltrasonic.checked,
-        useSensors: useSensors.checked,
-        useFloat: useFloat.checked,
-        useWifi: useWifi.checked,
-        autoRun: autoRun.checked,
-        onTime1: +onTime1.value,
-        offTime1: +offTime1.value,
-        onTime2: +onTime2.value,
-        offTime2: +offTime2.value,
-        onTime3: +onTime3.value,
-        offTime3: +offTime3.value,
-        apiKey: apiKey.value,
-        ssid: ssid.value,
-        password: password.value
-      };
+    [dom.autoRunEnabled1, dom.autoRunEnabled2, dom.autoRunEnabled3].forEach(input => {
+      input.addEventListener('change', updateScheduleInputs);
+    });
 
-      const r = await fetch('/api/settings', {
+    async function saveSection(section, payload) {
+      if (!confirm('Save these ' + section + ' settings?')) {
+        return;
+      }
+
+      try {
+        const r = await fetch('/api/settings/section', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ section, data: payload })
+        });
+
+        const response = await r.text();
+        if (r.ok) {
+          alert(response || section + ' settings saved.');
+        } else {
+          alert('Error: ' + response);
+        }
+      } catch (err) {
+        alert('Connection to controller failed');
+        console.error(err);
+      }
+    }
+
+    async function postSettingsSection(section, data) {
+      const response = await fetch('/api/settings/section', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify({ section, data })
       });
-      const response = await r.text();
-      if (r.ok) {
-        alert(response);
-      } else {
-        alert('Error: ' + response);
+
+      const message = await response.text();
+      if (!response.ok) {
+        throw new Error(message || section + ' restore failed');
       }
+    }
+
+    function setOperationStatus(message, busy = false) {
+      dom.operationStatus.textContent = message;
+      dom.operationStatus.classList.toggle('busy', busy);
+    }
+
+    let settingsOperationInProgress = false;
+
+    async function backupSettings() {
+      if (settingsOperationInProgress) return;
+      settingsOperationInProgress = true;
+      dom.backupSettings.disabled = true;
+      dom.restoreSettings.disabled = true;
+      setOperationStatus('Creating backup', true);
+
+      try {
+        const response = await fetch('/api/settings', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Could not read controller settings');
+
+        const backup = {
+          format: 'advanced-water-pump-controller-settings',
+          version: 1,
+          createdAt: new Date().toISOString(),
+          settings: await response.json()
+        };
+        const blob = new Blob([JSON.stringify(backup, null, 2)], {
+          type: 'application/json'
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'water-pump-controller-settings-' +
+          new Date().toISOString().slice(0, 10) + '.json';
+        link.click();
+        URL.revokeObjectURL(url);
+        setOperationStatus('Backup downloaded. Keep it secure because it contains saved credentials.');
+      } catch (error) {
+        console.error('Backup failed:', error);
+        setOperationStatus('Backup failed.');
+        alert(error.message || 'Could not create backup');
+      } finally {
+        dom.backupSettings.disabled = false;
+        dom.restoreSettings.disabled = false;
+        settingsOperationInProgress = false;
+      }
+    }
+
+    async function restoreSettings(file) {
+      try {
+        const backup = JSON.parse(await file.text());
+        if (backup.format !== 'advanced-water-pump-controller-settings' ||
+          backup.version !== 1 || !backup.settings) {
+          throw new Error('Unsupported or invalid backup file');
+        }
+
+        const settings = backup.settings;
+        if (!confirm('Restore saved pump controller settings? This will overwrite the current settings.')) {
+          return;
+        }
+
+        if (settingsOperationInProgress) return;
+        settingsOperationInProgress = true;
+        dom.restoreSettings.disabled = true;
+        dom.backupSettings.disabled = true;
+        setOperationStatus('Restoring calibration and current limits', true);
+        await postSettingsSection('tankCalibration', {
+          tankLow: Number(settings.tankLow) || 0,
+          tankFull: Number(settings.tankFull) || 0
+        });
+        await postSettingsSection('currentLimits', {
+          ampLow: Number(settings.ampLow) || 0,
+          ampMax: Number(settings.ampMax) || 0
+        });
+
+        setOperationStatus('Restoring features and schedule', true);
+        await postSettingsSection('features', {
+          useUltrasonic: settings.useUltrasonic === true,
+          useSensors: settings.useSensors === true,
+          useFloat: settings.useFloat === true,
+          useWifi: settings.useWifi !== false,
+          autoRun: settings.autoRun === true
+        });
+        await postSettingsSection('autoRunSchedule', {
+          autoRunEnabled1: settings.autoRunEnabled1 !== false,
+          autoRunEnabled2: settings.autoRunEnabled2 !== false,
+          autoRunEnabled3: settings.autoRunEnabled3 !== false,
+          onTime1: Number(settings.onTime1) || 615,
+          offTime1: Number(settings.offTime1) || 730,
+          onTime2: Number(settings.onTime2) || 1229,
+          offTime2: Number(settings.offTime2) || 1330,
+          onTime3: Number(settings.onTime3) || 1615,
+          offTime3: Number(settings.offTime3) || 1715
+        });
+
+        setOperationStatus('Restoring cloud and Wi-Fi settings', true);
+        await postSettingsSection('cloudLogging', {
+          apiKey: String(settings.apiKey || '')
+        });
+        await postSettingsSection('wifi', {
+          ssid: String(settings.ssid || ''),
+          password: String(settings.password || '')
+        });
+
+        await loadSettings();
+        setOperationStatus('Restore complete.');
+        alert('Settings restored successfully. Restart the controller if Wi-Fi settings changed.');
+      } catch (error) {
+        console.error('Restore failed:', error);
+        setOperationStatus('Restore failed.');
+        alert(error.message || 'Could not restore settings');
+      } finally {
+        dom.restoreSettings.disabled = false;
+        dom.backupSettings.disabled = false;
+        settingsOperationInProgress = false;
+        dom.restoreFile.value = '';
+      }
+    }
+
+    function saveTankCalibration() {
+      saveSection('tankCalibration', {
+        tankLow: +dom.tankLow.value,
+        tankFull: +dom.tankFull.value
+      });
+    }
+
+    function saveCurrentLimits() {
+      saveSection('currentLimits', {
+        ampLow: +dom.ampLow.value,
+        ampMax: +dom.ampMax.value
+      });
+    }
+
+    function saveFeatures() {
+      saveSection('features', {
+        useUltrasonic: dom.useUltrasonic.checked,
+        useSensors: dom.useSensors.checked,
+        useFloat: dom.useFloat.checked,
+        useWifi: dom.useWifi.checked,
+        autoRun: dom.autoRun.checked
+      });
+    }
+
+    function saveAutoRunSchedule() {
+      saveSection('autoRunSchedule', {
+        autoRunEnabled1: dom.autoRunEnabled1.checked,
+        autoRunEnabled2: dom.autoRunEnabled2.checked,
+        autoRunEnabled3: dom.autoRunEnabled3.checked,
+        onTime1: parseScheduleTime(dom.onTime1.value),
+        offTime1: parseScheduleTime(dom.offTime1.value),
+        onTime2: parseScheduleTime(dom.onTime2.value),
+        offTime2: parseScheduleTime(dom.offTime2.value),
+        onTime3: parseScheduleTime(dom.onTime3.value),
+        offTime3: parseScheduleTime(dom.offTime3.value)
+      });
+    }
+
+    function saveCloudLogging() {
+      saveSection('cloudLogging', {
+        apiKey: dom.apiKey.value
+      });
+    }
+
+    function saveWifiSettings() {
+      saveSection('wifi', {
+        ssid: dom.ssid.value,
+        password: dom.password.value
+      });
     }
 
     loadSettings();
 
+    let connectivityRequestInProgress = false;
+
     async function checkConnectivity() {
+      if (connectivityRequestInProgress) return;
+      connectivityRequestInProgress = true;
+
       try {
         const r = await fetch('/api/ping', {
           method: 'GET',
           signal: AbortSignal.timeout(3000)
         });
         if (r.ok) {
-          document.getElementById('connectivityStatus').innerHTML = 'Okay';
-          document.getElementById('connectivityStatus').style.color = 'green';
+          dom.connectivityStatus.textContent = 'Okay';
+          dom.connectivityStatus.className = 'status-value status-ok';
         } else {
-          document.getElementById('connectivityStatus').innerHTML = 'Error';
-          document.getElementById('connectivityStatus').style.color = 'red';
+          dom.connectivityStatus.textContent = 'Error';
+          dom.connectivityStatus.className = 'status-value status-error';
         }
       } catch (e) {
         console.log('Connectivity check failed:', e);
-        document.getElementById('connectivityStatus').innerHTML = 'Error';
-        document.getElementById('connectivityStatus').style.color = 'red';
+        dom.connectivityStatus.textContent = 'Error';
+        dom.connectivityStatus.className = 'status-value status-error';
+      } finally {
+        connectivityRequestInProgress = false;
       }
     }
 
@@ -514,45 +1036,83 @@
     setInterval(checkConnectivity, 4000);
     checkConnectivity();
 
+    let liveDataRequestInProgress = false;
+
+    function updatePumpButton(running) {
+      pumpRunningFromFirmware = running;
+      dom.pumpToggleButton.dataset.running = String(running);
+      dom.pumpToggleButton.textContent = running ? 'STOP PUMP' : 'START PUMP';
+      dom.pumpToggleButton.classList.toggle('stop', running);
+      dom.pumpToggleButton.disabled = false;
+    }
+
+    function formatLiveTime(value) {
+      const date = new Date(String(value || '').replace(' ', 'T'));
+      if (Number.isNaN(date.getTime())) return value || '-';
+
+      return date.toLocaleString(undefined, {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+    }
+
+    function formatRssi(value) {
+      const rssi = Number(value);
+      if (!Number.isFinite(rssi)) return 'Poor (- dBm)';
+
+      const quality = rssi >= -60 ? 'Good' : rssi >= -75 ? 'Average' : 'Poor';
+      return quality + ' (' + rssi + ' dBm)';
+    }
+
     async function loadLiveData() {
+      if (liveDataRequestInProgress) return;
+      liveDataRequestInProgress = true;
+
       try {
         const r = await fetch('/api/live');
         const d = await r.json();
 
-        document.getElementById('pumpRunningLive').innerHTML =
+        dom.pumpRunningLive.textContent =
           d.pumpRunning ? 'RUNNING' : 'STOPPED';
 
-        document.getElementById('tankPercentLive').innerHTML =
+        dom.tankPercentLive.textContent =
           d.tankPercent + ' %';
 
-        document.getElementById('distanceLive').innerHTML =
+        dom.distanceLive.textContent =
           d.ultrasonicDistance + ' cm';
 
-        document.getElementById('ampLive').innerHTML =
+        dom.ampLive.textContent =
           Number(d.liveAmp).toFixed(2) + ' A';
 
-        document.getElementById('floatLive').innerHTML =
+        dom.floatLive.textContent =
           d.floatSensor ? 'FULL' : 'NOT FULL';
 
-        document.getElementById('wifiLive').innerHTML =
+        dom.wifiLive.textContent =
           d.wifiConnected ? 'CONNECTED' : 'DISCONNECTED';
 
-        document.getElementById('rssiLive').innerHTML =
-          d.wifiRSSI + ' dBm';
+        dom.rssiLive.textContent = formatRssi(d.wifiRSSI);
 
-        document.getElementById('timeLive').innerHTML =
-          d.dateTime;
+        dom.timeLive.textContent = formatLiveTime(d.dateTime);
 
-        document.getElementById('pumpRunningLive').style.color =
+        dom.pumpRunningLive.style.color =
           d.pumpRunning ? 'green' : 'red';
 
-        document.getElementById('floatLive').style.color =
+        updatePumpButton(!!d.pumpRunning);
+
+        dom.floatLive.style.color =
           d.floatSensor ? 'green' : 'orange';
 
-        document.getElementById('tankBar').value = d.tankPercent;
+        dom.tankBar.value = d.tankPercent;
       }
       catch (e) {
         console.log(e);
+      } finally {
+        liveDataRequestInProgress = false;
       }
     }
 
@@ -560,65 +1120,52 @@
     loadLiveData();
 
     function togglePasswordVisibility() {
-      const passwordField = document.getElementById('password');
-      const button = document.querySelector('.password-toggle');
-
-      if (passwordField.type === 'password') {
-        passwordField.type = 'text';
-        button.textContent = '🙈';
+      if (dom.password.type === 'password') {
+        dom.password.type = 'text';
+        dom.passwordToggle.textContent = '🙈';
       } else {
-        passwordField.type = 'password';
-        button.textContent = '👁️';
+        dom.password.type = 'password';
+        dom.passwordToggle.textContent = '👁️';
       }
     }
 
-    async function syncRtcFromBrowserTime() {
-      const now = new Date();
-
+    async function sendRtcDate(date) {
       const data = {
-        year: now.getFullYear(),
-        month: now.getMonth() + 1,
-        day: now.getDate(),
-        hour: now.getHours(),
-        minute: now.getMinutes(),
-        second: now.getSeconds()
+        year: date.getFullYear(),
+        month: date.getMonth() + 1,
+        day: date.getDate(),
+        hour: date.getHours(),
+        minute: date.getMinutes(),
+        second: date.getSeconds()
       };
 
-      const r = await fetch('/api/rtc/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
+      try {
+        const r = await fetch('/api/rtc/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
 
-      alert(await r.text());
+        alert(await r.text());
+      } catch (err) {
+        alert('Connection to controller failed');
+        console.error(err);
+      }
     }
 
-    async function setManualRtc() {
-      const dt = document.getElementById("manualRtc").value;
+    function syncRtcFromBrowserTime() {
+      sendRtcDate(new Date());
+    }
+
+    function setManualRtc() {
+      const dt = dom.manualRtc.value;
 
       if (!dt) {
-        alert("Select date and time first");
+        alert('Select date and time first');
         return;
       }
 
-      const d = new Date(dt);
-
-      const data = {
-        year: d.getFullYear(),
-        month: d.getMonth() + 1,
-        day: d.getDate(),
-        hour: d.getHours(),
-        minute: d.getMinutes(),
-        second: 0
-      };
-
-      const r = await fetch('/api/rtc/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-
-      alert(await r.text());
+      sendRtcDate(new Date(dt));
     }
     async function syncRtcFromWiFi() {
       try {
@@ -641,6 +1188,76 @@
       }
     }
 
+    async function togglePumpFromWeb() {
+      if (pumpRunningFromFirmware === null || pumpControlRequestInProgress) {
+        return;
+      }
+
+      const running = pumpRunningFromFirmware;
+      const action = running ? 'stop' : 'start';
+      const message = running ? 'Stop the pump now?' : 'Start the pump now?';
+
+      if (!confirm(message)) {
+        return;
+      }
+
+      pumpControlRequestInProgress = true;
+      dom.pumpToggleButton.disabled = true;
+
+      try {
+        const r = await fetch('/api/pump/control', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: action })
+        });
+
+        const responseText = await r.text();
+        if (!r.ok) {
+          alert('Pump control failed: ' + responseText);
+          return;
+        }
+
+        if (action === 'start') {
+          alert('Pump start requested. It will begin after the 10-second countdown window.');
+        } else {
+          alert('Pump stop request accepted.');
+        }
+      } catch (err) {
+        alert('Connection to controller failed');
+        console.error(err);
+      } finally {
+        pumpControlRequestInProgress = false;
+      }
+    }
+
+    let firmwareAlertsRequestInProgress = false;
+
+    async function loadFirmwareAlerts() {
+      if (firmwareAlertsRequestInProgress) return;
+      firmwareAlertsRequestInProgress = true;
+
+      try {
+        const r = await fetch('/api/error-buffer', { cache: 'no-store' });
+        if (!r.ok) return;
+
+        const data = await r.json();
+        const messages = Array.isArray(data.messages) ? data.messages : [];
+
+        messages.forEach((msg) => {
+          if (msg && msg.trim()) {
+            alert(msg);
+          }
+        });
+      } catch (err) {
+        console.log('No firmware alerts yet:', err);
+      } finally {
+        firmwareAlertsRequestInProgress = false;
+      }
+    }
+
+    setInterval(loadFirmwareAlerts, 5000);
+    loadFirmwareAlerts();
+
     async function restartDevice() {
       if (confirm("Are you sure you want to restart the ESP32? The device will be unavailable for a few seconds.")) {
         try {
@@ -660,6 +1277,69 @@
       }
     }
 
+    function normalizeVersion(version) {
+      const cleaned = String(version || '').trim().replace(/^v/i, '');
+      return cleaned.replace(/[^0-9.]/g, '');
+    }
+
+    function compareVersions(installedVersion, latestVersion) {
+      const installed = normalizeVersion(installedVersion).split('.').filter(Boolean).map(Number);
+      const latest = normalizeVersion(latestVersion).split('.').filter(Boolean).map(Number);
+      const maxLength = Math.max(installed.length, latest.length);
+
+      for (let i = 0; i < maxLength; i++) {
+        const a = installed[i] ?? 0;
+        const b = latest[i] ?? 0;
+
+        if (a < b) return -1;
+        if (a > b) return 1;
+      }
+
+      return 0;
+    }
+
+    async function checkForUpdates() {
+      const button = dom.checkVersion;
+      const result = dom.versionCheckResult;
+      const latestLink = dom.fwVersionLink;
+
+      button.disabled = true;
+      result.className = '';
+      result.textContent = 'Checking current version...';
+
+      try {
+        const response = await fetch(SHIELDS_VERSION_URL, { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error('Version badge fetch failed');
+        }
+
+        const svgText = await response.text();
+        const match = svgText.match(/>(v?\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.]+)?)</i);
+        const latestTag = match ? match[1] : 'Unknown';
+
+        latestLink.href = RELEASES_URL;
+        const installedVersion = FIRMWARE_VERSION || 'Unknown';
+        const comparison = compareVersions(installedVersion, latestTag);
+
+        if (comparison < 0) {
+          result.classList.add('update-available');
+          result.textContent = 'Update available: ' + latestTag;
+        } else if (comparison > 0) {
+          result.classList.add('newer-installed');
+          result.textContent = 'Newer version already installed: ' + latestTag;
+        } else {
+          result.classList.add('up-to-date');
+          result.textContent = 'You are on the latest version: ' + latestTag;
+        }
+      } catch (err) {
+        console.error('Update check failed:', err);
+        result.classList.add('update-available');
+        result.textContent = 'Could not check releases right now.';
+      } finally {
+        button.disabled = false;
+      }
+    }
+
     // Fetch firmware version from ESP32
     async function loadFirmwareVersion() {
       try {
@@ -667,21 +1347,37 @@
         if (r.ok) {
           const data = await r.json();
           FIRMWARE_VERSION = data.version || data.fw_version || 'Unknown';
+          SOFTWARE_VERSION = data.swVersion || data.swversion || data.software_version || data.app_version || data.version || data.fw_version || DEFAULT_SOFTWARE_VERSION;
         } else {
           FIRMWARE_VERSION = 'Unknown';
+          SOFTWARE_VERSION = DEFAULT_SOFTWARE_VERSION;
         }
       } catch (err) {
         console.error('Failed to fetch firmware version:', err);
         FIRMWARE_VERSION = 'Unknown';
+        SOFTWARE_VERSION = DEFAULT_SOFTWARE_VERSION;
       }
       updateFooterVersions();
     }
 
     function updateFooterVersions() {
-      document.getElementById('fwVersion').textContent = FIRMWARE_VERSION;
-      document.getElementById('swVersion').textContent = SOFTWARE_VERSION;
+      dom.fwVersionLink.href = RELEASES_URL;
+      dom.swVersionLink.href = RELEASES_URL;
+
+      dom.fwVersion.textContent = FIRMWARE_VERSION;
+      dom.swVersion.textContent = SOFTWARE_VERSION;
     }
 
+    dom.checkVersion.addEventListener('click', checkForUpdates);
+    dom.backupSettings.addEventListener('click', () => {
+      if (confirm('Create a backup of the current settings? The file will contain saved credentials.')) {
+        backupSettings();
+      }
+    });
+    dom.restoreSettings.addEventListener('click', () => dom.restoreFile.click());
+    dom.restoreFile.addEventListener('change', event => {
+      if (event.target.files[0]) restoreSettings(event.target.files[0]);
+    });
     loadFirmwareVersion();
 
   </script>
