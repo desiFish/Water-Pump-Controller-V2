@@ -13,6 +13,29 @@
 
 > <span style="color:#d97706"><b>Safety:</b></span> This is a hobby and development project. Mains voltage, contactors, relays, pumps, and water are dangerous together. Use correct fuses, earthing, insulation, enclosures, cable sizes, isolation, and a qualified electrician. Do not treat this controller as a fail-safe or life-safety device.
 
+## Contents
+
+- [What It Does](#what-it-does)
+- [Hardware](#hardware)
+- [Software Requirements](#software-requirements)
+- [First Setup](#first-setup)
+- [Web Settings Guide](#web-settings-guide)
+  - [Live Status](#live-status)
+  - [Tank Calibration](#tank-calibration)
+  - [Current Limits](#current-limits)
+  - [Automatic Schedule](#automatic-schedule)
+  - [RTC Settings](#rtc-settings)
+  - [Backup and Restore](#backup-and-restore)
+  - [OTA and Restart](#ota-and-restart)
+  - [Cloud Logging and API Key](#cloud-logging-and-api-key)
+- [Physical Controls](#physical-controls)
+- [API Reference](#api-reference)
+- [Safety and Troubleshooting](#safety-and-troubleshooting)
+- [Gallery](#gallery)
+- [Project Files](#project-files)
+- [GNU GPLv3: What You May and Must Do](#gnu-gplv3-what-you-may-and-must-do)
+- [Development Status](#development-status)
+
 ## What It Does
 
 - Controls the pump from a physical button or the local web page.
