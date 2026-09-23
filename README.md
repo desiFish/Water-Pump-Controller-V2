@@ -267,6 +267,35 @@ The browser polls this endpoint every five seconds and displays returned message
 4. Confirm the sensor is enabled only after it is connected.
 5. Keep high-voltage wiring physically separate from sensor wiring.
 
+## Gallery
+
+<table>
+  <tr>
+    <td align="center"><img src="resource/SCH_Schematic1.png" alt="Circuit schematic" width="220"><br><span style="color:#168aad"><b>Circuit schematic</b></span></td>
+    <td align="center"><img src="resource/x1.jpg" alt="Controller view 1" width="220"><br><span style="color:#168aad"><b>Controller view 1</b></span></td>
+    <td align="center"><img src="resource/x2.jpg" alt="Controller view 2" width="220"><br><span style="color:#168aad"><b>Controller view 2</b></span></td>
+    <td align="center"><img src="resource/x3.jpg" alt="Controller view 3" width="220"><br><span style="color:#168aad"><b>Controller view 3</b></span></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="resource/x4.jpg" alt="Full controller view" width="220"><br><span style="color:#168aad"><b>Full controller view</b></span></td>
+    <td align="center"><img src="resource/x5.jpg" alt="Ultrasonic sensor USB view" width="220"><br><span style="color:#168aad"><b>Ultrasonic sensor USB</b></span></td>
+    <td align="center"><img src="resource/x6.jpg" alt="Ultrasonic sensor" width="220"><br><span style="color:#168aad"><b>Ultrasonic sensor</b></span></td>
+    <td align="center"><img src="resource/x7.jpg" alt="Complete setup" width="220"><br><span style="color:#168aad"><b>Complete setup</b></span></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="resource/x8.jpg" alt="Contactor open" width="220"><br><span style="color:#168aad"><b>Contactor open</b></span></td>
+    <td align="center"><img src="resource/x9.jpg" alt="Contactor covered" width="220"><br><span style="color:#168aad"><b>Contactor covered</b></span></td>
+    <td align="center"><img src="resource/x10.jpg" alt="OLED view" width="220"><br><span style="color:#168aad"><b>OLED view</b></span></td>
+    <td align="center"><img src="resource/x11.png" alt="Web interface desktop view" width="220"><br><span style="color:#168aad"><b>Web interface desktop</b></span></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="resource/x12.png" alt="Web interface mobile view" width="220"><br><span style="color:#168aad"><b>Web interface mobile</b></span></td>
+    <td align="center"><img src="resource/x13.avif" alt="Ultrasonic module" width="220"><br><span style="color:#168aad"><b>Ultrasonic module</b></span></td>
+    <td></td>
+    <td></td>
+  </tr>
+</table>
+
 ## Project Files
 
 | Path | Purpose |
@@ -312,9 +341,3 @@ GPLv3 grants copyright permissions; it does not automatically grant trademark ri
 ## Development Status
 
 This project is actively evolving. Verify the firmware version, hardware wiring, sensor calibration, and safety behavior before every deployment. Report reproducible issues with the board, firmware version, wiring, logs, and steps to reproduce.
-
-<p>
-  <span style="color:#168aad"><b>Firmware:</b> 1.4.3</span> ·
-  <span style="color:#2a9d8f"><b>Software:</b> 1.1.0</span> ·
-  <span style="color:#6b7280"><b>License:</b> GPLv3</span>
-</p>
