@@ -26,7 +26,7 @@ Hardware:
 NOT USING CURRENTLY--> ZMPT101B Voltage Sensor
 */
 
-#define FW_VERSION "1.5.0" // firmware version
+#define FW_VERSION "1.5.1" // firmware version
 #define SW_VERSION "1.1.0" // software version
 
 // For basic ESP32 stuff like wifi, OTA Update and Wifi Manager Server
@@ -183,6 +183,7 @@ const char *autoRunEnabledKeys[3] = {
 int lastDay;
 byte doneForToday = 0, activeAutoRunPeriod = 0;
 bool autoRun, isDisplayOn;
+volatile bool autoStartInProgress = false;
 String dateAndTime, currTime;
 // for holding water level (in %)
 byte holdData = 0;
@@ -1101,7 +1102,7 @@ void loop2(void *pvParameters)
     // Automatic schedule
     // =========================
 
-    if (autoRun && !isPumpRunning && raiseAlert == 0)
+    if (autoRun && !isPumpRunning && !autoStartInProgress && raiseAlert == 0)
     {
       for (byte i = 0; i < 3; i++)
       {
@@ -1111,6 +1112,7 @@ void loop2(void *pvParameters)
             checkTimeFor(autoRunTimes[i][0], autoRunTimes[i][1]))
         {
           activeAutoRunPeriod = i + 1;
+          autoStartInProgress = true;
           raiseAlert = ALERT_AUTOSTART;
           break;
         }
@@ -1154,6 +1156,7 @@ void loop(void)
     isDisplayOn = true;
     raiseAlert = STATUS_OK;
     autoPumpStartSequence();
+    autoStartInProgress = false;
     isDisplayOn = false;
   }
 
